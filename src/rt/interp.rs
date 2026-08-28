@@ -121,6 +121,49 @@ impl<'b> Interpreter<'b> {
                     self.frames[frame_index].regs[*dst as usize] =
                         value::Value::add(arg1_value, imm.clone(), &mut self.interner)?;
                 }
+
+                bytecode::Opcode::Sub { dst, arg1, arg2 } => {
+                    let arg1_value = self.frames[frame_index].regs[*arg1 as usize].clone();
+                    let arg2_value = self.frames[frame_index].regs[*arg2 as usize].clone();
+                    self.frames[frame_index].regs[*dst as usize] =
+                        value::Value::sub(arg1_value, arg2_value, &mut self.interner)?;
+                }
+
+                bytecode::Opcode::Subi { dst, arg1, imm } => {
+                    let arg1_value = self.frames[frame_index].regs[*arg1 as usize].clone();
+                    self.frames[frame_index].regs[*dst as usize] =
+                        value::Value::sub(arg1_value, imm.clone(), &mut self.interner)?;
+                }
+
+                bytecode::Opcode::Mul { dst, arg1, arg2 } => {
+                    let arg1_value = self.frames[frame_index].regs[*arg1 as usize].clone();
+                    let arg2_value = self.frames[frame_index].regs[*arg2 as usize].clone();
+                    self.frames[frame_index].regs[*dst as usize] =
+                        value::Value::mul(arg1_value, arg2_value, &mut self.interner)?;
+                }
+
+                bytecode::Opcode::Muli { dst, arg1, imm } => {
+                    let arg1_value = self.frames[frame_index].regs[*arg1 as usize].clone();
+                    self.frames[frame_index].regs[*dst as usize] =
+                        value::Value::mul(arg1_value, imm.clone(), &mut self.interner)?;
+                }
+
+                bytecode::Opcode::Div { dst, arg1, arg2 } => {
+                    let arg1_value = self.frames[frame_index].regs[*arg1 as usize].clone();
+                    let arg2_value = self.frames[frame_index].regs[*arg2 as usize].clone();
+                    self.frames[frame_index].regs[*dst as usize] =
+                        value::Value::div(arg1_value, arg2_value, &mut self.interner)?;
+                }
+
+                bytecode::Opcode::Divi { dst, arg1, imm } => {
+                    let arg1_value = self.frames[frame_index].regs[*arg1 as usize].clone();
+                    self.frames[frame_index].regs[*dst as usize] =
+                        value::Value::div(arg1_value, imm.clone(), &mut self.interner)?;
+                }
+
+                bytecode::Opcode::Jmp { idx } => {
+                    ip = *idx;
+                }
             }
 
             ip += 1;

@@ -27,6 +27,7 @@ impl StringInterner {
 pub enum Value<'a> {
     None,
     Int(i64),
+    Float(f64),
     String(Arc<str>),
     Function {
         name: &'a String,
@@ -41,6 +42,7 @@ impl<'a> fmt::Display for Value<'a> {
         match self {
             Value::None => write!(f, "None"),
             Value::Int(i) => write!(f, "{}", i),
+            Value::Float(i) => write!(f, "{}", i),
             Value::String(s) => write!(f, "{}", s),
             Value::Function { name, .. } => write!(f, "<function '{}'>", name),
         }
@@ -56,6 +58,7 @@ impl<'a> Value<'a> {
     ) -> Result<Value<'a>, error::Error> {
         match (a.clone(), b.clone()) {
             (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x + y)),
+            (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x + y)),
             (Value::String(x), Value::String(y)) => {
                 let mut result = String::with_capacity(x.len() + y.len());
                 result.push_str(&x);
@@ -71,11 +74,66 @@ impl<'a> Value<'a> {
         }
     }
 
+    // Subtracts two values.
+    pub fn sub(
+        a: Value<'a>,
+        b: Value<'a>,
+        _: &mut StringInterner,
+    ) -> Result<Value<'a>, error::Error> {
+        match (a.clone(), b.clone()) {
+            (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x - y)),
+            (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x - y)),
+
+            _ => Err(error::Error::TypeError(format!(
+                "Invalid operand types for `sub`: {}, {}",
+                Value::type_of(a),
+                Value::type_of(b)
+            ))),
+        }
+    }
+
+    // Multiplies two values.
+    pub fn mul(
+        a: Value<'a>,
+        b: Value<'a>,
+        _: &mut StringInterner,
+    ) -> Result<Value<'a>, error::Error> {
+        match (a.clone(), b.clone()) {
+            (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x * y)),
+            (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x * y)),
+
+            _ => Err(error::Error::TypeError(format!(
+                "Invalid operand types for `mul`: {}, {}",
+                Value::type_of(a),
+                Value::type_of(b)
+            ))),
+        }
+    }
+
+    // Divides two values.
+    pub fn div(
+        a: Value<'a>,
+        b: Value<'a>,
+        _: &mut StringInterner,
+    ) -> Result<Value<'a>, error::Error> {
+        match (a.clone(), b.clone()) {
+            (Value::Int(x), Value::Int(y)) => Ok(Value::Float((x as f64) / (y as f64))),
+            (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x / y)),
+
+            _ => Err(error::Error::TypeError(format!(
+                "Invalid operand types for `div`: {}, {}",
+                Value::type_of(a),
+                Value::type_of(b)
+            ))),
+        }
+    }
+
     // Returns the type name of this Value.
     pub fn type_of(v: Value) -> String {
         match v {
             Value::None => String::from("NoneType"),
             Value::Int(_) => String::from("int"),
+            Value::Float(_) => String::from("float"),
             Value::String(_) => String::from("str"),
             Value::Function { .. } => String::from("Callable"),
         }

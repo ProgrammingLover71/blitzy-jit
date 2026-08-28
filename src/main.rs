@@ -7,7 +7,7 @@ fn main() {
     let foo_code = bytecode::Block::new(vec![
         bytecode::Opcode::Pop { reg: 0 },
         bytecode::Opcode::Pop { reg: 1 },
-        bytecode::Opcode::Add {
+        bytecode::Opcode::Mul {
             dst: 0,
             arg1: 0,
             arg2: 1,
@@ -18,11 +18,11 @@ fn main() {
     let block = bytecode::Block::new(vec![
         bytecode::Opcode::Load {
             dst: 0,
-            val: value::Value::Int(1123),
+            val: value::Value::Float(1.2),
         },
         bytecode::Opcode::Load {
             dst: 1,
-            val: value::Value::Int(4566),
+            val: value::Value::Float(1.2),
         },
         bytecode::Opcode::Push { reg: 0 },
         bytecode::Opcode::Push { reg: 1 },
@@ -47,7 +47,7 @@ fn main() {
 
     match result {
         Ok(val) => println!("{}", val),
-        Err(err) => println!("Error!\n{}", err),
+        Err(err) => println!("{}", err),
     }
 
     println!("Number of used registers: {}", block.used_regs);
