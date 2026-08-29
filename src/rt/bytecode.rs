@@ -84,6 +84,18 @@ pub enum Opcode<'a> {
         imm: Value<'a>,
     },
 
+    Eq {
+        dst: Register,
+        arg1: Register,
+        arg2: Register
+    },
+
+    Neq {
+        dst: Register,
+        arg1: Register,
+        arg2: Register
+    },
+
     Jmp {
         idx: usize
     }
@@ -94,6 +106,58 @@ pub struct Block<'a> {
     pub used_regs: u16,
 }
 
+impl<'a> Opcode<'a> {
+    #[inline]
+    fn max_reg(&self) -> u8 {
+        match self {
+            Opcode::Return { reg } 
+                => *reg,
+            Opcode::Call { reg, .. } 
+                => *reg,
+
+            // Data transfer
+            Opcode::Load { dst, .. } 
+                => *dst,
+            Opcode::Move { dst, src } 
+                => (*dst).max(*src),
+
+            // Push/pop
+            Opcode::Push { reg } 
+                => *reg,
+            Opcode::Pushi { .. } 
+                => 0,
+            Opcode::Pop { reg } 
+                => *reg,
+
+            // Math ops
+            Opcode::Add { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Addi { dst, arg1, .. } 
+                => (*dst).max(*arg1),
+            Opcode::Sub { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Subi { dst, arg1, .. } 
+                => (*dst).max(*arg1),
+            Opcode::Mul { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Muli { dst, arg1, .. } 
+                => (*dst).max(*arg1),
+            Opcode::Div { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Divi { dst, arg1, .. } 
+                => (*dst).max(*arg1),
+            Opcode::Eq { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Neq { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+
+            // Jumps
+            Opcode::Jmp { .. } 
+                => 0,
+        }
+    }
+}
+
 impl<'a> Block<'a> {
     pub fn new(instructions: Vec<Opcode<'a>>) -> Self {
         Self {
@@ -102,36 +166,11 @@ impl<'a> Block<'a> {
         }
     }
 
-    pub fn find_used_regs(insts: &[Opcode]) -> u16 {
+    pub fn find_used_regs(insts: &[Opcode<'a>]) -> u16 {
         insts
             .iter()
-            .map(|opcode| {
-                let max_reg = match opcode {
-                    Opcode::Return { reg } => *reg,
-                    Opcode::Call { reg, .. } => *reg,
-                    // Data transfer
-                    Opcode::Load { dst, .. } => *dst,
-                    Opcode::Move { dst, src } => (*dst).max(*src),
-                    // Push/pop
-                    Opcode::Push { reg } => *reg,
-                    Opcode::Pushi { imm: _ } => 0,
-                    Opcode::Pop { reg } => *reg,
-                    // Math ops
-                    Opcode::Add { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
-                    Opcode::Addi { dst, arg1, .. } => (*dst).max(*arg1),
-                    Opcode::Sub { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
-                    Opcode::Subi { dst, arg1, .. } => (*dst).max(*arg1),
-                    Opcode::Mul { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
-                    Opcode::Muli { dst, arg1, .. } => (*dst).max(*arg1),
-                    Opcode::Div { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
-                    Opcode::Divi { dst, arg1, .. } => (*dst).max(*arg1),
-                    // Jumps
-                    Opcode::Jmp { idx: _ } => 0,
-                };
-
-                u16::from(max_reg) + 1
-            })
+            .map(Opcode::max_reg)
             .max()
-            .unwrap_or(0)
+            .map_or(0, |max_reg| u16::from(max_reg) + 1)
     }
 }

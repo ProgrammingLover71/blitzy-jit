@@ -28,6 +28,7 @@ pub enum Value<'a> {
     None,
     Int(i64),
     Float(f64),
+    Bool(bool),
     String(Arc<str>),
     Function {
         name: &'a String,
@@ -42,7 +43,8 @@ impl<'a> fmt::Display for Value<'a> {
         match self {
             Value::None => write!(f, "None"),
             Value::Int(i) => write!(f, "{}", i),
-            Value::Float(i) => write!(f, "{}", i),
+            Value::Float(f_) => write!(f, "{}", f_),
+            Value::Bool(b) => write!(f, "{}", if *b { "True" } else { "False" }),
             Value::String(s) => write!(f, "{}", s),
             Value::Function { name, .. } => write!(f, "<function '{}'>", name),
         }
@@ -74,11 +76,10 @@ impl<'a> Value<'a> {
         }
     }
 
-    // Subtracts two values.
+    // Subtracts two Values.
     pub fn sub(
         a: Value<'a>,
         b: Value<'a>,
-        _: &mut StringInterner,
     ) -> Result<Value<'a>, error::Error> {
         match (a.clone(), b.clone()) {
             (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x - y)),
@@ -92,11 +93,10 @@ impl<'a> Value<'a> {
         }
     }
 
-    // Multiplies two values.
+    // Multiplies two Values.
     pub fn mul(
         a: Value<'a>,
         b: Value<'a>,
-        _: &mut StringInterner,
     ) -> Result<Value<'a>, error::Error> {
         match (a.clone(), b.clone()) {
             (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x * y)),
@@ -110,11 +110,10 @@ impl<'a> Value<'a> {
         }
     }
 
-    // Divides two values.
+    // Divides two Values.
     pub fn div(
         a: Value<'a>,
         b: Value<'a>,
-        _: &mut StringInterner,
     ) -> Result<Value<'a>, error::Error> {
         match (a.clone(), b.clone()) {
             (Value::Int(x), Value::Int(y)) => Ok(Value::Float((x as f64) / (y as f64))),
@@ -128,12 +127,59 @@ impl<'a> Value<'a> {
         }
     }
 
+    // Compares two Values for equality.
+    pub fn eq(a: Value<'a>, b: Value<'a>) -> Result<Value<'a>, error::Error> {
+        let result = match (a, b) {
+            (Value::None, Value::None) => true,
+            (Value::Int(x), Value::Int(y)) => x == y,
+            (Value::Float(x), Value::Float(y)) => x == y,
+            (Value::Bool(x), Value::Bool(y)) => x == y,
+            (Value::String(x), Value::String(y)) => x == y,
+            (
+                Value::Function {
+                    name: name_a,
+                    code: code_a,
+                    arity: arity_a,
+                },
+                Value::Function {
+                    name: name_b,
+                    code: code_b,
+                    arity: arity_b,
+                },
+            ) => {
+                std::ptr::eq(name_a, name_b)
+                    && std::ptr::eq(code_a, code_b)
+                    && arity_a == arity_b
+            }
+            (left, right) => {
+                return Err(error::Error::TypeError(format!(
+                    "Invalid operand types for `eq`: {}, {}",
+                    Value::type_of(left),
+                    Value::type_of(right)
+                )));
+            }
+        };
+
+        Ok(Value::Bool(result))
+    }
+
+    pub fn not(a: Value<'a>) -> Result<Value<'a>, error::Error> {
+        match a {
+            Value::Bool(v) => Ok(Value::Bool(!v)),
+            other => Err(error::Error::TypeError(format!(
+                "Invalid operand type for `not`: {}",
+                Value::type_of(other)
+            ))),
+        }
+    }
+
     // Returns the type name of this Value.
     pub fn type_of(v: Value) -> String {
         match v {
             Value::None => String::from("NoneType"),
             Value::Int(_) => String::from("int"),
             Value::Float(_) => String::from("float"),
+            Value::Bool(_) => String::from("bool"),
             Value::String(_) => String::from("str"),
             Value::Function { .. } => String::from("Callable"),
         }

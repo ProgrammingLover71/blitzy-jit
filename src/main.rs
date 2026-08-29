@@ -7,7 +7,7 @@ fn main() {
     let foo_code = bytecode::Block::new(vec![
         bytecode::Opcode::Pop { reg: 0 },
         bytecode::Opcode::Pop { reg: 1 },
-        bytecode::Opcode::Mul {
+        bytecode::Opcode::Eq {
             dst: 0,
             arg1: 0,
             arg2: 1,

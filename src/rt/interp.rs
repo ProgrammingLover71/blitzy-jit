@@ -126,39 +126,53 @@ impl<'b> Interpreter<'b> {
                     let arg1_value = this_frame.regs[*arg1 as usize].clone();
                     let arg2_value = this_frame.regs[*arg2 as usize].clone();
                     this_frame.regs[*dst as usize] =
-                        value::Value::sub(arg1_value, arg2_value, &mut self.interner)?;
+                        value::Value::sub(arg1_value, arg2_value)?;
                 }
     
                 bytecode::Opcode::Subi { dst, arg1, imm } => {
                     let arg1_value = this_frame.regs[*arg1 as usize].clone();
                     this_frame.regs[*dst as usize] =
-                        value::Value::sub(arg1_value, imm.clone(), &mut self.interner)?;
+                        value::Value::sub(arg1_value, imm.clone())?;
                 }
     
                 bytecode::Opcode::Mul { dst, arg1, arg2 } => {
                     let arg1_value = this_frame.regs[*arg1 as usize].clone();
                     let arg2_value = this_frame.regs[*arg2 as usize].clone();
                     this_frame.regs[*dst as usize] =
-                        value::Value::mul(arg1_value, arg2_value, &mut self.interner)?;
+                        value::Value::mul(arg1_value, arg2_value)?;
                 }
     
                 bytecode::Opcode::Muli { dst, arg1, imm } => {
                     let arg1_value = this_frame.regs[*arg1 as usize].clone();
                     this_frame.regs[*dst as usize] =
-                        value::Value::mul(arg1_value, imm.clone(), &mut self.interner)?;
+                        value::Value::mul(arg1_value, imm.clone())?;
                 }
     
                 bytecode::Opcode::Div { dst, arg1, arg2 } => {
                     let arg1_value = this_frame.regs[*arg1 as usize].clone();
                     let arg2_value = this_frame.regs[*arg2 as usize].clone();
                     this_frame.regs[*dst as usize] =
-                        value::Value::div(arg1_value, arg2_value, &mut self.interner)?;
+                        value::Value::div(arg1_value, arg2_value)?;
                 }
     
                 bytecode::Opcode::Divi { dst, arg1, imm } => {
                     let arg1_value = this_frame.regs[*arg1 as usize].clone();
                     this_frame.regs[*dst as usize] =
-                        value::Value::div(arg1_value, imm.clone(), &mut self.interner)?;
+                        value::Value::div(arg1_value, imm.clone())?;
+                }
+    
+                bytecode::Opcode::Eq { dst, arg1, arg2 } => {
+                    let arg1_value = this_frame.regs[*arg1 as usize].clone();
+                    let arg2_value = this_frame.regs[*arg2 as usize].clone();
+                    this_frame.regs[*dst as usize] =
+                        value::Value::eq(arg1_value, arg2_value)?;
+                }
+    
+                bytecode::Opcode::Neq { dst, arg1, arg2 } => {
+                    let arg1_value = this_frame.regs[*arg1 as usize].clone();
+                    let arg2_value = this_frame.regs[*arg2 as usize].clone();
+                    this_frame.regs[*dst as usize] =
+                        value::Value::not(value::Value::eq(arg1_value, arg2_value)?)?;
                 }
     
                 bytecode::Opcode::Jmp { idx } => {
