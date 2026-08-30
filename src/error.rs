@@ -1,7 +1,7 @@
 use std::fmt;
 
 pub enum Error {
-    StackUnderflowError,
+    StackUnderflowError(usize),
 
     TypeError(String),
     ValueError(String),
@@ -10,7 +10,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::StackUnderflowError => write!(f, "{}", Error::type_name(self)),
+            Error::StackUnderflowError(ip) => write!(f, "{}: At ip={}", Error::type_name(self), ip),
             Error::TypeError(msg) => write!(f, "{}: {}", Error::type_name(self), msg),
             Error::ValueError(msg) => write!(f, "{}: {}", Error::type_name(self), msg),
         }
@@ -20,7 +20,7 @@ impl fmt::Display for Error {
 impl Error {
     fn type_name(err: &Error) -> String {
         match err {
-            Error::StackUnderflowError => String::from("[VM] StackUnderflowError"),
+            Error::StackUnderflowError(_) => String::from("StackUnderflowError"),
             Error::TypeError(_) => String::from("TypeError"),
             Error::ValueError(_) => String::from("ValueError"),
         }

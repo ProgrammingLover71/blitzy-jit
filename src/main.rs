@@ -39,6 +39,9 @@ fn main() {
             reg: 2,
             nargs: 2,
         },
+        bytecode::Opcode::Pop {
+            reg: 0
+        },
         bytecode::Opcode::Return { reg: 0 },
     ]);
 
