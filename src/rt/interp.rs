@@ -175,6 +175,34 @@ impl<'b> Interpreter<'b> {
                         value::Value::not(value::Value::eq(arg1_value, arg2_value)?)?;
                 }
     
+                bytecode::Opcode::Gt { dst, arg1, arg2 } => {
+                    let arg1_value = this_frame.regs[*arg1 as usize].clone();
+                    let arg2_value = this_frame.regs[*arg2 as usize].clone();
+                    this_frame.regs[*dst as usize] =
+                        value::Value::gt(arg1_value, arg2_value)?;
+                }
+    
+                bytecode::Opcode::Gte { dst, arg1, arg2 } => {
+                    let arg1_value = this_frame.regs[*arg1 as usize].clone();
+                    let arg2_value = this_frame.regs[*arg2 as usize].clone();
+                    this_frame.regs[*dst as usize] =
+                        value::Value::ge(arg1_value, arg2_value)?;
+                }
+    
+                bytecode::Opcode::Lt { dst, arg1, arg2 } => {
+                    let arg1_value = this_frame.regs[*arg1 as usize].clone();
+                    let arg2_value = this_frame.regs[*arg2 as usize].clone();
+                    this_frame.regs[*dst as usize] =
+                        value::Value::lt(arg1_value, arg2_value)?;
+                }
+    
+                bytecode::Opcode::Lte { dst, arg1, arg2 } => {
+                    let arg1_value = this_frame.regs[*arg1 as usize].clone();
+                    let arg2_value = this_frame.regs[*arg2 as usize].clone();
+                    this_frame.regs[*dst as usize] =
+                        value::Value::le(arg1_value, arg2_value)?;
+                }
+    
                 bytecode::Opcode::Jmp { idx } => {
                     this_frame.ip = *idx;
                 }

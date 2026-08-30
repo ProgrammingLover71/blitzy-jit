@@ -96,6 +96,30 @@ pub enum Opcode<'a> {
         arg2: Register
     },
 
+    Gt {
+        dst: Register,
+        arg1: Register,
+        arg2: Register
+    },
+
+    Lt {
+        dst: Register,
+        arg1: Register,
+        arg2: Register
+    },
+
+    Gte {
+        dst: Register,
+        arg1: Register,
+        arg2: Register
+    },
+
+    Lte {
+        dst: Register,
+        arg1: Register,
+        arg2: Register
+    },
+
     Jmp {
         idx: usize
     }
@@ -146,9 +170,19 @@ impl<'a> Opcode<'a> {
                 => (*dst).max(*arg1).max(*arg2),
             Opcode::Divi { dst, arg1, .. } 
                 => (*dst).max(*arg1),
+
+            // Boolean ops
             Opcode::Eq { dst, arg1, arg2 } 
                 => (*dst).max(*arg1).max(*arg2),
             Opcode::Neq { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Gt { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Lt { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Gte { dst, arg1, arg2 } 
+                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Lte { dst, arg1, arg2 } 
                 => (*dst).max(*arg1).max(*arg2),
 
             // Jumps
