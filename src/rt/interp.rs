@@ -1,4 +1,5 @@
 use crate::error;
+use crate::intern;
 use crate::rt::bytecode;
 use crate::rt::value;
 
@@ -26,7 +27,7 @@ impl<'a> Frame<'a> {
 pub struct Interpreter<'b> {
     pub frames: Vec<Frame<'b>>,
     pub stack: Vec<value::Value<'b>>,
-    pub interner: value::StringInterner,
+    pub interner: intern::Interner,
 }
 
 impl<'b> Interpreter<'b> {
@@ -34,7 +35,7 @@ impl<'b> Interpreter<'b> {
         Self {
             frames: vec![],
             stack: vec![],
-            interner: value::StringInterner::new(),
+            interner: intern::Interner::new(),
         }
     }
 

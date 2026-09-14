@@ -1,27 +1,10 @@
-use crate::{error, rt::bytecode};
-use std::collections::HashMap;
-use std::fmt;
+use crate::error;
+use crate::intern;
+use crate::rt::bytecode;
+
 use std::sync::Arc;
+use std::fmt;
 
-#[derive(Clone)]
-pub struct StringInterner {
-    strings: HashMap<String, Arc<str>>,
-}
-
-impl StringInterner {
-    pub fn new() -> Self {
-        Self {
-            strings: HashMap::new(),
-        }
-    }
-
-    pub fn intern(&mut self, value: &str) -> Arc<str> {
-        self.strings
-            .entry(value.to_owned())
-            .or_insert_with_key(|key| Arc::from(key.as_str()))
-            .clone()
-    }
-}
 
 #[derive(Clone)]
 pub enum Value<'a> {
@@ -56,7 +39,7 @@ impl<'a> Value<'a> {
     pub fn add(
         a: Value<'a>,
         b: Value<'a>,
-        interner: &mut StringInterner,
+        interner: &mut intern::Interner,
     ) -> Result<Value<'a>, error::Error> {
         match (a.clone(), b.clone()) {
             (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x + y)),
