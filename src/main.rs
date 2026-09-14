@@ -8,9 +8,15 @@ mod rt;
 use rt::*;
 
 fn main() {
-    let src = String::from("abcd 1234");
-    let mut lex = Lexer::new(src);
-    
+    let src = String::from("return 1234\nreturn a64bcd * 7 / 3 + 2\n");
+    let mut lex = lexer::Lexer::new(src);
+    loop {
+        let token = lex.get_token();
+        println!("{}", token);
+        if token.t_type == lexer::TokenType::EndOfFile {
+            break;
+        }
+    }
 
     let foo_name = String::from("foo");
     let foo_code = bytecode::Block::new(vec![
