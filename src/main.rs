@@ -1,9 +1,17 @@
 mod intern;
 mod error;
+
+mod lexer;
+use lexer::*;
+
 mod rt;
 use rt::*;
 
 fn main() {
+    let src = String::from("abcd 1234");
+    let mut lex = Lexer::new(src);
+    
+
     let foo_name = String::from("foo");
     let foo_code = bytecode::Block::new(vec![
         bytecode::Opcode::Pop { reg: 0 },
