@@ -18,7 +18,7 @@ impl Lexer {
             current: '\x00',
             index: -1,
             line: 1,
-            col: 0,
+            col: 1,
         };
 
         s.next();

@@ -21,7 +21,7 @@ pub enum TokenType {
     KReturn,
 }
 
-
+#[derive(Clone)]
 pub struct Token {
     pub t_type: TokenType,
     pub t_value: String,

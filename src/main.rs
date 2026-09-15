@@ -4,16 +4,21 @@ mod error;
 mod lexer;
 use lexer::*;
 
+mod parser;
+use parser::*;
+
 mod rt;
 use rt::*;
 
 fn main() {
-    let src = String::from("return 1234\nreturn a64bcd * 7 / 3 + 2\n");
-    let mut lex = lexer::Lexer::new(src);
+    let src = String::from("3 + 2\n");
+    let lex = lexer::Lexer::new(src);
+    let mut prs = parser::Parser::new(lex);
     loop {
-        let token = lex.get_token();
-        println!("{}", token);
-        if token.t_type == lexer::TokenType::EndOfFile {
+        let tok = prs.current();
+        println!("{}", tok);
+        prs.next();
+        if tok.t_type == lexer::TokenType::EndOfFile {
             break;
         }
     }
