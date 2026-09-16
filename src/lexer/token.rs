@@ -16,6 +16,7 @@ pub enum TokenType {
 
     // Symbols
     Plus, Minus, Star, Slash,
+    LParen, RParen,
 
     // Keywords
     KReturn,

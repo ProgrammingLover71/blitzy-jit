@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::fmt;
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Value<'a> {
     None,
     Int(i64),

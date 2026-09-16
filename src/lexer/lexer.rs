@@ -13,8 +13,11 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(source: String) -> Self {
+        let mut new_source = source;
+        new_source.push('\n');
+        
         let mut s = Self {
-            source,
+            source: new_source,
             current: '\x00',
             index: -1,
             line: 1,
@@ -124,6 +127,42 @@ impl Lexer {
             };
             self.next();
             return slash;
+        }
+
+        if self.current == '(' {
+            self.col += 1;
+            let lparen = Token {
+                t_type: TokenType::LParen,
+                t_value: "(".to_string(),
+                t_line: start_line as u32,
+                t_col: start_col as u32,
+            };
+            self.next();
+            return lparen;
+        }
+
+        if self.current == ')' {
+            self.col += 1;
+            let rparen = Token {
+                t_type: TokenType::RParen,
+                t_value: ")".to_string(),
+                t_line: start_line as u32,
+                t_col: start_col as u32,
+            };
+            self.next();
+            return rparen;
+        }
+
+        if self.current == '+' {
+            self.col += 1;
+            let plus = Token {
+                t_type: TokenType::Plus,
+                t_value: "+".to_string(),
+                t_line: start_line as u32,
+                t_col: start_col as u32,
+            };
+            self.next();
+            return plus;
         }
 
         if self.current.is_ascii_digit() {

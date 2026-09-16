@@ -3,6 +3,7 @@ use crate::rt::value;
 pub type Register = u8;
 pub type Value<'a> = value::Value<'a>;
 
+#[derive(Debug)]
 pub enum Opcode<'a> {
     Return {
         reg: Register,
@@ -125,6 +126,7 @@ pub enum Opcode<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct Block<'a> {
     pub instructions: Vec<Opcode<'a>>,
     pub used_regs: u16,

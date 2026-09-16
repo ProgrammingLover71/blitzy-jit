@@ -1,74 +1,41 @@
 mod intern;
 mod error;
+mod bytegen;
 
 mod lexer;
-use lexer::*;
-
 mod parser;
-use parser::*;
-
 mod rt;
-use rt::*;
+
+use parser::ast;
 
 fn main() {
-    let src = String::from("3 + 2\n");
+    let src = String::from("return 3 * 2 + 4");
+
     let lex = lexer::Lexer::new(src);
-    let mut prs = parser::Parser::new(lex);
-    loop {
-        let tok = prs.current();
-        println!("{}", tok);
-        prs.next();
-        if tok.t_type == lexer::TokenType::EndOfFile {
-            break;
+    let mut arena = ast::NodeArena::new();
+    let mut prs = parser::Parser::new(lex, &mut arena);
+    let bgen = bytegen::Bytegen::new();
+
+    let prog = prs.program();
+
+    match prog {
+        Ok(p) => {
+            let block = bgen.compile_program(&p);
+            
+            let mut interp = rt::interp::Interpreter::new();
+            let result = interp.run(&block);
+
+            match result {
+                Ok(val) => {
+                    println!("Program result: {}", val);
+                }
+                Err(e) => {
+                    println!("{}", e);
+                }
+            }
+        }
+        Err(e) => {
+            println!("{}", e);
         }
     }
-
-    let foo_name = String::from("foo");
-    let foo_code = bytecode::Block::new(vec![
-        bytecode::Opcode::Pop { reg: 0 },
-        bytecode::Opcode::Pop { reg: 1 },
-        bytecode::Opcode::Gt {
-            dst: 0,
-            arg1: 0,
-            arg2: 1,
-        },
-        bytecode::Opcode::Return { reg: 0 },
-    ]);
-
-    let block = bytecode::Block::new(vec![
-        bytecode::Opcode::Load {
-            dst: 0,
-            val: value::Value::Float(1.22),
-        },
-        bytecode::Opcode::Load {
-            dst: 1,
-            val: value::Value::Float(1.21),
-        },
-        bytecode::Opcode::Push { reg: 1 },
-        bytecode::Opcode::Push { reg: 0 },
-        bytecode::Opcode::Load {
-            dst: 2,
-            val: value::Value::Function {
-                name: &foo_name,
-                code: &foo_code,
-                arity: 2,
-            },
-        },
-        bytecode::Opcode::Call {
-            dst: 0,
-            reg: 2,
-            nargs: 2,
-        },
-        bytecode::Opcode::Return { reg: 0 },
-    ]);
-
-    let mut interp = interp::Interpreter::new();
-    let result = interp.run(&block);
-
-    match result {
-        Ok(val) => println!("{}", val),
-        Err(err) => println!("{}", err),
-    }
-
-    println!("Number of used registers: {}", block.used_regs);
 }
