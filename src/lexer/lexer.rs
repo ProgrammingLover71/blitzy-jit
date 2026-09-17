@@ -153,16 +153,16 @@ impl Lexer {
             return rparen;
         }
 
-        if self.current == '+' {
+        if self.current == ',' {
             self.col += 1;
-            let plus = Token {
-                t_type: TokenType::Plus,
-                t_value: "+".to_string(),
+            let comma = Token {
+                t_type: TokenType::Comma,
+                t_value: ",".to_string(),
                 t_line: start_line as u32,
                 t_col: start_col as u32,
             };
             self.next();
-            return plus;
+            return comma;
         }
 
         if self.current.is_ascii_digit() {
@@ -199,7 +199,7 @@ impl Lexer {
             }
 
             return Token {
-                t_type: TokenType::Error,
+                t_type: TokenType::Identifier,
                 t_value: value,
                 t_line: start_line as u32,
                 t_col: start_col as u32,

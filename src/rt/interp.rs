@@ -46,7 +46,12 @@ impl<'b> Interpreter<'b> {
     fn pop(&mut self, frame: &Frame) -> Result<value::Value<'b>, error::Error> {
         self.stack
             .pop()
-            .ok_or(error::Error::StackUnderflowError(frame.ip))
+            .ok_or(error::Error {
+                pe_line: 0,
+                pe_col: 0,
+                pe_type: error::ErrorType::StackUnderflowError,
+                pe_msg: String::from("Stack underflow"),
+            })
     }
 
     pub fn run(&mut self, code: &'b bytecode::Block) -> Result<value::Value<'b>, error::Error> {
@@ -56,6 +61,11 @@ impl<'b> Interpreter<'b> {
         let mut this_frame = self.frames[frame_index].clone();
 
         loop {
+            // If the instruction pointer is out of bounds, return None (the program is at the end)
+            if this_frame.ip >= this_frame.code.instructions.len() {
+                return Ok(value::Value::None);
+            }
+
             match &this_frame.code.instructions[this_frame.ip] {
                 bytecode::Opcode::Return { reg } => {
                     let reg_value = this_frame.regs[*reg as usize].clone();
@@ -72,19 +82,29 @@ impl<'b> Interpreter<'b> {
                             arity,
                         } => {
                             if arity != *nargs {
-                                return Err(error::Error::ValueError(format!(
-                                    "Invalid number of arguments: expected {}, got {}",
-                                    arity, nargs
-                                )));
+                                return Err(error::Error {
+                                    pe_line: 0,
+                                    pe_col: 0,
+                                    pe_type: error::ErrorType::ValueError,
+                                    pe_msg: format!(
+                                        "Invalid number of arguments: expected {}, got {}",
+                                        arity, nargs
+                                    )
+                                });
                             }
 
                             self.run(code)
                         }
 
-                        _ => Err(error::Error::TypeError(format!(
-                            "Expected Callable value, got {}",
-                            value::Value::type_of(reg_value)
-                        ))),
+                        _ => Err(error::Error {
+                            pe_line: 0,
+                            pe_col: 0,
+                            pe_type: error::ErrorType::TypeError,
+                            pe_msg: format!(
+                                "Expected Callable value, got {}",
+                                value::Value::type_of(reg_value)
+                            )
+                        }),
                     };
 
                     this_frame.regs[*dst as usize] = res?;

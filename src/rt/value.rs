@@ -51,11 +51,16 @@ impl<'a> Value<'a> {
                 Ok(Value::String(interner.intern(&result)))
             }
 
-            _ => Err(error::Error::TypeError(format!(
-                "Invalid operand types for `add`: {}, {}",
-                Value::type_of(a),
-                Value::type_of(b)
-            ))),
+            _ => Err(error::Error {
+                pe_line: 0,
+                pe_col: 0,
+                pe_type: error::ErrorType::ValueError,
+                pe_msg: format!(
+                    "Invalid operand types for `add`: {}, {}",
+                    Value::type_of(a),
+                    Value::type_of(b)
+                )
+            }),
         }
     }
 
@@ -65,11 +70,16 @@ impl<'a> Value<'a> {
             (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x - y)),
             (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x - y)),
 
-            _ => Err(error::Error::TypeError(format!(
-                "Invalid operand types for `sub`: {}, {}",
-                Value::type_of(a),
-                Value::type_of(b)
-            ))),
+            _ => Err(error::Error {
+                pe_line: 0,
+                pe_col: 0,
+                pe_type: error::ErrorType::ValueError,
+                pe_msg: format!(
+                    "Invalid operand types for `sub`: {}, {}",
+                    Value::type_of(a),
+                    Value::type_of(b)
+                )
+            }),
         }
     }
 
@@ -79,11 +89,16 @@ impl<'a> Value<'a> {
             (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x * y)),
             (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x * y)),
 
-            _ => Err(error::Error::TypeError(format!(
-                "Invalid operand types for `mul`: {}, {}",
-                Value::type_of(a),
-                Value::type_of(b)
-            ))),
+            _ => Err(error::Error {
+                pe_line: 0,
+                pe_col: 0,
+                pe_type: error::ErrorType::ValueError,
+                pe_msg: format!(
+                    "Invalid operand types for `mul`: {}, {}",
+                    Value::type_of(a),
+                    Value::type_of(b)
+                )
+            }),
         }
     }
 
@@ -93,11 +108,16 @@ impl<'a> Value<'a> {
             (Value::Int(x), Value::Int(y)) => Ok(Value::Float((x as f64) / (y as f64))),
             (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x / y)),
 
-            _ => Err(error::Error::TypeError(format!(
-                "Invalid operand types for `div`: {}, {}",
-                Value::type_of(a),
-                Value::type_of(b)
-            ))),
+            _ => Err(error::Error {
+                pe_line: 0,
+                pe_col: 0,
+                pe_type: error::ErrorType::ValueError,
+                pe_msg: format!(
+                    "Invalid operand types for `div`: {}, {}",
+                    Value::type_of(a),
+                    Value::type_of(b)
+                )
+            }),
         }
     }
 
@@ -122,11 +142,16 @@ impl<'a> Value<'a> {
                 },
             ) => std::ptr::eq(name_a, name_b) && std::ptr::eq(code_a, code_b) && arity_a == arity_b,
             (left, right) => {
-                return Err(error::Error::TypeError(format!(
-                    "Invalid operand types for `eq`: {}, {}",
-                    Value::type_of(left),
-                    Value::type_of(right)
-                )));
+                return Err(error::Error {
+                    pe_line: 0,
+                    pe_col: 0,
+                    pe_type: error::ErrorType::ValueError,
+                    pe_msg: format!(
+                        "Invalid operand types for `eq`: {}, {}",
+                        Value::type_of(left),
+                        Value::type_of(right)
+                    )
+                });
             }
         };
 
@@ -139,11 +164,16 @@ impl<'a> Value<'a> {
             (Value::Int(x), Value::Int(y)) => x > y,
             (Value::Float(x), Value::Float(y)) => x > y,
             (left, right) => {
-                return Err(error::Error::TypeError(format!(
-                    "Invalid operand types for `eq`: {}, {}",
-                    Value::type_of(left),
-                    Value::type_of(right)
-                )));
+                return Err(error::Error {
+                    pe_line: 0,
+                    pe_col: 0,
+                    pe_type: error::ErrorType::ValueError,
+                    pe_msg: format!(
+                        "Invalid operand types for `gt`: {}, {}",
+                        Value::type_of(left),
+                        Value::type_of(right)
+                    )
+                });
             }
         };
 
@@ -156,11 +186,16 @@ impl<'a> Value<'a> {
             (Value::Int(x), Value::Int(y)) => x < y,
             (Value::Float(x), Value::Float(y)) => x < y,
             (left, right) => {
-                return Err(error::Error::TypeError(format!(
-                    "Invalid operand types for `eq`: {}, {}",
-                    Value::type_of(left),
-                    Value::type_of(right)
-                )));
+                return Err(error::Error {
+                    pe_line: 0,
+                    pe_col: 0,
+                    pe_type: error::ErrorType::ValueError,
+                    pe_msg: format!(
+                        "Invalid operand types for `lt`: {}, {}",
+                        Value::type_of(left),
+                        Value::type_of(right)
+                    )
+                });
             }
         };
 
@@ -187,10 +222,15 @@ impl<'a> Value<'a> {
         let result = match a {
             Value::Bool(v) => !v,
             other => {
-                return Err(error::Error::TypeError(format!(
-                    "Invalid operand type for `not`: {}",
-                    Value::type_of(other)
-                )));
+                return Err(error::Error {
+                    pe_line: 0,
+                    pe_col: 0,
+                    pe_type: error::ErrorType::ValueError,
+                    pe_msg: format!(
+                        "Invalid operand type for `not`: {}",
+                        Value::type_of(other)
+                    )
+                });
             }
         };
 
@@ -201,11 +241,16 @@ impl<'a> Value<'a> {
         let result = match (a, b) {
             (Value::Bool(x), Value::Bool(y)) => x | y,
             (left, right) => {
-                return Err(error::Error::TypeError(format!(
-                    "Invalid operand types for `or`: {}, {}",
-                    Value::type_of(left),
-                    Value::type_of(right)
-                )));
+                return Err(error::Error {
+                    pe_line: 0,
+                    pe_col: 0,
+                    pe_type: error::ErrorType::ValueError,
+                    pe_msg: format!(
+                        "Invalid operand types for `or`: {}, {}",
+                        Value::type_of(left),
+                        Value::type_of(right)
+                    )
+                });
             }
         };
 
@@ -216,11 +261,16 @@ impl<'a> Value<'a> {
         let result = match (a, b) {
             (Value::Bool(x), Value::Bool(y)) => x & y,
             (left, right) => {
-                return Err(error::Error::TypeError(format!(
-                    "Invalid operand types for `or`: {}, {}",
-                    Value::type_of(left),
-                    Value::type_of(right)
-                )));
+                return Err(error::Error {
+                    pe_line: 0,
+                    pe_col: 0,
+                    pe_type: error::ErrorType::ValueError,
+                    pe_msg: format!(
+                        "Invalid operand types for `and`: {}, {}",
+                        Value::type_of(left),
+                        Value::type_of(right)
+                    )
+                });
             }
         };
 
@@ -231,11 +281,16 @@ impl<'a> Value<'a> {
         let result = match (a, b) {
             (Value::Bool(x), Value::Bool(y)) => x ^ y,
             (left, right) => {
-                return Err(error::Error::TypeError(format!(
-                    "Invalid operand types for `or`: {}, {}",
-                    Value::type_of(left),
-                    Value::type_of(right)
-                )));
+                return Err(error::Error {
+                    pe_line: 0,
+                    pe_col: 0,
+                    pe_type: error::ErrorType::ValueError,
+                    pe_msg: format!(
+                        "Invalid operand types for `xor`: {}, {}",
+                        Value::type_of(left),
+                        Value::type_of(right)
+                    )
+                });
             }
         };
 

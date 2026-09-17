@@ -2,6 +2,7 @@ use std::fmt;
 
 use crate::parser::ast;
 use crate::lexer::*;
+use crate::error::*;
 
 
 pub struct Parser<'a> {
@@ -9,35 +10,6 @@ pub struct Parser<'a> {
     
     lexer: lexer::Lexer,
     current: token::Token
-}
-
-
-#[derive(Clone, Copy, Debug)]
-pub enum ParseErrorType {
-    InvalidSyntaxError
-}
-
-#[derive(Clone, Debug)]
-pub struct ParseError {
-    pub pe_line: u32,
-    pub pe_col: u32,
-    pub pe_type: ParseErrorType,
-    pub pe_msg: String
-}
-
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {} at line {}, col {}", self.pe_type, self.pe_msg, self.pe_line, self.pe_col)
-    }
-}
-
-impl fmt::Display for ParseErrorType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ParseErrorType::InvalidSyntaxError => write!(f, "InvalidSyntaxError"),
-        }
-    }
 }
 
 
@@ -65,7 +37,7 @@ impl<'a> Parser<'a> {
         self.current.clone()
     }
 
-    fn match_token(&mut self, t_type: token::TokenType, err: ParseError) -> Result<(), ParseError> {
+    fn match_token(&mut self, t_type: token::TokenType, err: Error) -> Result<(), Error> {
         if self.current.t_type == t_type {
             Ok(())
         } else {
@@ -80,16 +52,19 @@ impl<'a> Parser<'a> {
     /*
         Expression rules:
 
-        factor := INT | LPAREN expr RPAREN
-        term := factor (STAR|SLASH factor)*
+        factor := INT | LPAREN expr RPAREN | IDENT
+
+        call := factor (LPAREN (expr (COMMA expr)*)? RPAREN)?
+        term := call (STAR|SLASH call)*
         expr := term (PLUS|MINUS term)*
 
         statement := RETURN expr NL
+                  |= expr NL
 
         program := statement*
      */
 
-    pub fn factor(&mut self) -> Result<ast::NodeId, ParseError> {
+    pub fn factor(&mut self) -> Result<ast::NodeId, Error> {
         match self.current.t_type {
             token::TokenType::Int => {
                 // .unwrap() here is safe, Int tokens always have a valid int associated with them
@@ -109,10 +84,10 @@ impl<'a> Parser<'a> {
                 self.next();
                 let expr = self.expr()?;
 
-                self.match_token(token::TokenType::RParen, ParseError {
+                self.match_token(token::TokenType::RParen, Error {
                     pe_line: self.current.t_line, 
                     pe_col:  self.current.t_col, 
-                    pe_type: ParseErrorType::InvalidSyntaxError,
+                    pe_type: ErrorType::InvalidSyntaxError,
                     pe_msg: String::from("Expected closing parenthesis")
                 })?;
 
@@ -120,11 +95,24 @@ impl<'a> Parser<'a> {
                 Ok(expr)
             }
 
+            token::TokenType::Identifier => {
+                let name = self.current.t_value.clone();
+                self.next();
+
+                Ok(self.arena.alloc(ast::AstNode {
+                    n_line: self.current.t_line,
+                    n_col:  self.current.t_col,
+                    n_type: ast::AstNodeType::Ident { 
+                        name 
+                    }
+                }))
+            }
+
             _ => {
-                Err(ParseError { 
+                Err(Error { 
                     pe_line: self.current.t_line, 
                     pe_col:  self.current.t_col, 
-                    pe_type: ParseErrorType::InvalidSyntaxError,
+                    pe_type: ErrorType::InvalidSyntaxError,
                     pe_msg: String::from("Expected factor expression")
                 })
             }
@@ -132,14 +120,67 @@ impl<'a> Parser<'a> {
     }
 
 
-    pub fn term(&mut self) -> Result<ast::NodeId, ParseError> {
-        let mut left = self.factor()?;
+    pub fn call(&mut self) -> Result<ast::NodeId, Error> {
+        let mut callee = self.factor()?;
+
+        while self.current.t_type == token::TokenType::LParen {
+            let line = self.current.t_line;
+            let col = self.current.t_col;
+
+            self.next();
+            let mut args = Vec::new();
+
+            if self.current.t_type != token::TokenType::RParen {
+                loop {
+                    let arg = self.expr()?;
+                    args.push(arg);
+
+                    if self.current.t_type == token::TokenType::RParen {
+                        break;
+                    }
+
+                    self.match_token(token::TokenType::Comma, Error { 
+                        pe_line: self.current.t_line, 
+                        pe_col:  self.current.t_col, 
+                        pe_type: ErrorType::InvalidSyntaxError,
+                        pe_msg: String::from("Expected comma between function arguments")
+                    })?;
+
+                    self.next();
+                }
+            }
+
+            self.match_token(token::TokenType::RParen, Error { 
+                pe_line: line, 
+                pe_col:  col, 
+                pe_type: ErrorType::InvalidSyntaxError,
+                pe_msg: String::from("Expected closing parenthesis after function call")
+            })?;
+
+            self.next();
+
+            callee = self.arena.alloc(ast::AstNode {
+                n_line: line,
+                n_col:  col,
+                n_type: ast::AstNodeType::Call { 
+                    callee,
+                    args
+                }
+            });
+        }
+
+        Ok(callee)
+    }
+
+
+    pub fn term(&mut self) -> Result<ast::NodeId, Error> {
+        let mut left = self.call()?;
 
         while self.current.t_type == token::TokenType::Star || self.current.t_type == token::TokenType::Slash {
             let op = self.current.clone();
             self.next();
 
-            let right = self.factor()?;
+            let right = self.call()?;
 
             left = self.arena.alloc(ast::AstNode {
                 n_line: op.t_line,
@@ -156,7 +197,7 @@ impl<'a> Parser<'a> {
     }
 
 
-    pub fn expr(&mut self) -> Result<ast::NodeId, ParseError> {
+    pub fn expr(&mut self) -> Result<ast::NodeId, Error> {
         let mut left = self.term()?;
 
         while self.current.t_type == token::TokenType::Plus || self.current.t_type == token::TokenType::Minus {
@@ -180,7 +221,9 @@ impl<'a> Parser<'a> {
     }
 
 
-    pub fn statement(&mut self) -> Result<Option<ast::NodeId>, ParseError> {
+    pub fn statement(&mut self) -> Result<Option<ast::NodeId>, Error> {
+        println!("Current token: {:?}", self.current);
+
         match self.current.t_type {
             token::TokenType::KReturn => {
                 let line = self.current.t_line;
@@ -189,10 +232,10 @@ impl<'a> Parser<'a> {
                 self.next();
                 let expr = self.expr()?;
 
-                self.match_token(TokenType::Newline, ParseError { 
+                self.match_token(TokenType::Newline, Error { 
                     pe_line: line, 
                     pe_col: col, 
-                    pe_type: ParseErrorType::InvalidSyntaxError, 
+                    pe_type: ErrorType::InvalidSyntaxError, 
                     pe_msg: String::from("Expected newline after return statement")
                 })?;
 
@@ -215,18 +258,33 @@ impl<'a> Parser<'a> {
             }
 
             _ => {
-                Err(ParseError { 
-                    pe_line: self.current.t_line, 
-                    pe_col:  self.current.t_col, 
-                    pe_type: ParseErrorType::InvalidSyntaxError,
-                    pe_msg: String::from("Expected statement")
-                })
+                // Try to parse an expression statement
+                let try_expr = self.expr();
+
+                match try_expr {
+                    Ok(expr) => {
+                        self.match_token(TokenType::Newline, Error { 
+                            pe_line: self.current.t_line, 
+                            pe_col:  self.current.t_col, 
+                            pe_type: ErrorType::InvalidSyntaxError,
+                            pe_msg: String::from("Expected newline after expression statement")
+                        })?;
+                        Ok(Some(expr))
+                    }
+
+                    Err(_) => Err(Error { 
+                        pe_line: self.current.t_line, 
+                        pe_col:  self.current.t_col, 
+                        pe_type: ErrorType::InvalidSyntaxError,
+                        pe_msg: String::from("Expected statement")
+                    })
+                }
             }
         }
     }
 
 
-    pub fn program(&mut self) -> Result<ast::Program, ParseError> {
+    pub fn program(mut self) -> Result<ast::Program<'a>, Error> {
         let mut roots = Vec::new();
 
         while self.current.t_type != token::TokenType::EndOfFile {

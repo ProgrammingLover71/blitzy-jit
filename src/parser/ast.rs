@@ -3,13 +3,18 @@ use crate::lexer::token;
 
 
 // Represents a node ID in an arena
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NodeId(pub u32);
 
 // The type of an AST node. Holds its data
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AstNodeType {
     IntLiteral {
         value: i64
+    },
+
+    Ident {
+        name: String
     },
 
     BinaryOp {
@@ -18,12 +23,18 @@ pub enum AstNodeType {
         op: OpType
     },
 
+    Call {
+        callee: NodeId,
+        args: Vec<NodeId>
+    },
+
     Return {
         value: NodeId
     }
 }
 
 // The type of a binary operation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OpType {
     Add,
     Subtract,
@@ -32,6 +43,7 @@ pub enum OpType {
 }
 
 // An AST node. Holds line/column and data info
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AstNode {
     pub n_line: u32,
     pub n_col: u32,
@@ -39,11 +51,13 @@ pub struct AstNode {
 }
 
 // A node arena. Holds a vector of nodes to keep locality
+#[derive(Debug)]
 pub struct NodeArena {
     nodes: Vec<AstNode>
 }
 
 // An AST program. Holds a copy of the parser's node arena and a vector of root node IDs
+#[derive(Debug)]
 pub struct Program<'a> {
     pub arena: &'a mut NodeArena,
     pub roots: Vec<NodeId>
@@ -109,9 +123,18 @@ impl fmt::Display for AstNodeType {
                 op  
             } => write!(f, "BinaryOp(left: {}, right: {}, op: {})", left.0, right.0, op),
 
+            AstNodeType::Ident { 
+                name
+            } => write!(f, "Ident(name: {})", name),
+
             AstNodeType::Return { 
                 value
             } => write!(f, "Return(value: {})", value.0),
+
+            AstNodeType::Call { 
+                callee,
+                args
+            } => write!(f, "Call(callee: {}, args: {:?})", callee.0, args.iter().map(|id| id.0).collect::<Vec<_>>()),
         }
     }
 }

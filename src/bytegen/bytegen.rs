@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use crate::parser::ast;
 use crate::rt::bytecode;
@@ -81,6 +82,39 @@ impl<'a> Bytegen<'a> {
                         });
                     }
                 }
+
+                dst
+            }
+
+            ast::AstNodeType::Ident { name } => {
+                let dst = self.next_reg;
+                self.next_reg += 1;
+
+                self.instructions.push(bytecode::Opcode::Load {
+                    dst,
+                    val: value::Value::String(Arc::new(name.as_str())),
+                });
+
+                dst
+            }
+
+            ast::AstNodeType::Call { callee, args } => {
+                let callee_reg = self.compile_node(program, *callee);
+                let mut arg_regs = Vec::new();
+
+                for arg in args {
+                    let arg_reg = self.compile_node(program, *arg);
+                    arg_regs.push(arg_reg);
+                }
+
+                let dst = self.next_reg;
+                self.next_reg += 1;
+
+                self.instructions.push(bytecode::Opcode::Call {
+                    dst,
+                    reg: callee_reg,
+                    nargs: arg_regs.len() as u16,
+                });
 
                 dst
             }

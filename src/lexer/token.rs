@@ -16,13 +16,15 @@ pub enum TokenType {
 
     // Symbols
     Plus, Minus, Star, Slash,
-    LParen, RParen,
+    LParen, RParen, Comma,
+
+    Identifier,
 
     // Keywords
     KReturn,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Token {
     pub t_type: TokenType,
     pub t_value: String,
@@ -37,7 +39,6 @@ impl fmt::Display for Token {
         write!(f, ", value: {:?}", self.t_value);
         write!(f, ", line: {}", self.t_line);
         write!(f, ", column: {}", self.t_col);
-        write!(f, " }}");
-        Ok(())
+        write!(f, " }}")
     }
 }

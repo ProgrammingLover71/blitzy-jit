@@ -9,17 +9,18 @@ mod rt;
 use parser::ast;
 
 fn main() {
-    let src = String::from("return 3 * 2 + 4");
+    let src = String::from("print(5)\n");
 
     let lex = lexer::Lexer::new(src);
     let mut arena = ast::NodeArena::new();
-    let mut prs = parser::Parser::new(lex, &mut arena);
+    let prs = parser::Parser::new(lex, &mut arena);
     let bgen = bytegen::Bytegen::new();
 
     let prog = prs.program();
 
     match prog {
         Ok(p) => {
+            println!("Parsed program: {:?}", p);
             let block = bgen.compile_program(&p);
             
             let mut interp = rt::interp::Interpreter::new();
