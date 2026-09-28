@@ -3,7 +3,13 @@ use crate::rt::value;
 pub type Register = u8;
 pub type Value<'a> = value::Value<'a>;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SourceLoc {
+    pub line: u32,
+    pub col: u32,
+}
+
+#[derive(Clone, Debug)]
 pub enum Opcode<'a> {
     Return {
         reg: Register,
@@ -88,47 +94,58 @@ pub enum Opcode<'a> {
     Eq {
         dst: Register,
         arg1: Register,
-        arg2: Register
+        arg2: Register,
     },
 
     Neq {
         dst: Register,
         arg1: Register,
-        arg2: Register
+        arg2: Register,
     },
 
     Gt {
         dst: Register,
         arg1: Register,
-        arg2: Register
+        arg2: Register,
     },
 
     Lt {
         dst: Register,
         arg1: Register,
-        arg2: Register
+        arg2: Register,
     },
 
     Gte {
         dst: Register,
         arg1: Register,
-        arg2: Register
+        arg2: Register,
     },
 
     Lte {
         dst: Register,
         arg1: Register,
-        arg2: Register
+        arg2: Register,
     },
 
     Jmp {
-        idx: usize
-    }
+        idx: usize,
+    },
+
+    LoadName {
+        dst: Register,
+        name: &'a str,
+    },
+
+    StoreName {
+        src: Register,
+        name: &'a str,
+    },
 }
 
 #[derive(Debug)]
 pub struct Block<'a> {
     pub instructions: Vec<Opcode<'a>>,
+    pub locations: Vec<SourceLoc>,
     pub used_regs: u16,
 }
 
@@ -136,70 +153,59 @@ impl<'a> Opcode<'a> {
     #[inline]
     fn max_reg(&self) -> u8 {
         match self {
-            Opcode::Return { reg } 
-                => *reg,
-            Opcode::Call { reg, .. } 
-                => *reg,
+            Opcode::Return { reg } => *reg,
+            Opcode::Call { reg, .. } => *reg,
 
             // Data transfer
-            Opcode::Load { dst, .. } 
-                => *dst,
-            Opcode::Move { dst, src } 
-                => (*dst).max(*src),
+            Opcode::Load { dst, .. } => *dst,
+            Opcode::Move { dst, src } => (*dst).max(*src),
 
             // Push/pop
-            Opcode::Push { reg } 
-                => *reg,
-            Opcode::Pushi { .. } 
-                => 0,
-            Opcode::Pop { reg } 
-                => *reg,
+            Opcode::Push { reg } => *reg,
+            Opcode::Pushi { .. } => 0,
+            Opcode::Pop { reg } => *reg,
 
             // Math ops
-            Opcode::Add { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
-            Opcode::Addi { dst, arg1, .. } 
-                => (*dst).max(*arg1),
-            Opcode::Sub { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
-            Opcode::Subi { dst, arg1, .. } 
-                => (*dst).max(*arg1),
-            Opcode::Mul { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
-            Opcode::Muli { dst, arg1, .. } 
-                => (*dst).max(*arg1),
-            Opcode::Div { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
-            Opcode::Divi { dst, arg1, .. } 
-                => (*dst).max(*arg1),
+            Opcode::Add { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
+            Opcode::Addi { dst, arg1, .. } => (*dst).max(*arg1),
+            Opcode::Sub { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
+            Opcode::Subi { dst, arg1, .. } => (*dst).max(*arg1),
+            Opcode::Mul { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
+            Opcode::Muli { dst, arg1, .. } => (*dst).max(*arg1),
+            Opcode::Div { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
+            Opcode::Divi { dst, arg1, .. } => (*dst).max(*arg1),
 
             // Boolean ops
-            Opcode::Eq { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
-            Opcode::Neq { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
-            Opcode::Gt { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
-            Opcode::Lt { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
-            Opcode::Gte { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
-            Opcode::Lte { dst, arg1, arg2 } 
-                => (*dst).max(*arg1).max(*arg2),
+            Opcode::Eq { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
+            Opcode::Neq { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
+            Opcode::Gt { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
+            Opcode::Lt { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
+            Opcode::Gte { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
+            Opcode::Lte { dst, arg1, arg2 } => (*dst).max(*arg1).max(*arg2),
 
             // Jumps
-            Opcode::Jmp { .. } 
-                => 0,
+            Opcode::Jmp { .. } => 0,
+
+            // Name ops
+            Opcode::LoadName { dst, .. } => *dst,
+            Opcode::StoreName { src, .. } => *src,
         }
     }
 }
 
 impl<'a> Block<'a> {
-    pub fn new(instructions: Vec<Opcode<'a>>) -> Self {
+    pub fn new(instructions: Vec<Opcode<'a>>, locations: Vec<SourceLoc>) -> Self {
+        assert_eq!(instructions.len(), locations.len());
+
         Self {
             used_regs: Block::find_used_regs(&instructions),
             instructions,
+            locations,
         }
+    }
+
+    pub fn location_for(&self, idx: usize) -> Option<SourceLoc> {
+        self.locations.get(idx).copied()
     }
 
     pub fn find_used_regs(insts: &[Opcode<'a>]) -> u16 {

@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
 use crate::parser::ast;
 use crate::rt::bytecode;
@@ -8,6 +7,7 @@ use crate::rt::value;
 pub struct Bytegen<'a> {
     next_reg: u8,
     instructions: Vec<bytecode::Opcode<'a>>,
+    locations: Vec<bytecode::SourceLoc>,
 }
 
 impl<'a> Bytegen<'a> {
@@ -15,6 +15,7 @@ impl<'a> Bytegen<'a> {
         Self {
             next_reg: 0,
             instructions: Vec::new(),
+            locations: Vec::new(),
         }
     }
 
@@ -24,7 +25,16 @@ impl<'a> Bytegen<'a> {
         }
 
         let instructions = self.allocate_registers();
-        bytecode::Block::new(instructions)
+        let locations = std::mem::take(&mut self.locations);
+        bytecode::Block::new(instructions, locations)
+    }
+
+    fn push_instruction(&mut self, instruction: bytecode::Opcode<'a>, loc: &ast::AstNode) {
+        self.instructions.push(instruction);
+        self.locations.push(bytecode::SourceLoc {
+            line: loc.n_line,
+            col: loc.n_col,
+        });
     }
 
     fn compile_node(&mut self, program: &ast::Program<'a>, node_id: ast::NodeId) -> u8 {
@@ -35,10 +45,10 @@ impl<'a> Bytegen<'a> {
                 let dst = self.next_reg;
                 self.next_reg += 1;
 
-                self.instructions.push(bytecode::Opcode::Load {
+                self.push_instruction(bytecode::Opcode::Load {
                     dst,
                     val: value::Value::Int(*value),
-                });
+                }, node);
 
                 dst
             }
@@ -51,35 +61,35 @@ impl<'a> Bytegen<'a> {
 
                 match op {
                     ast::OpType::Add => {
-                        self.instructions.push(bytecode::Opcode::Add {
+                        self.push_instruction(bytecode::Opcode::Add {
                             dst,
                             arg1: left_reg,
                             arg2: right_reg,
-                        });
+                        }, node);
                     }
 
                     ast::OpType::Subtract => {
-                        self.instructions.push(bytecode::Opcode::Sub {
+                        self.push_instruction(bytecode::Opcode::Sub {
                             dst,
                             arg1: left_reg,
                             arg2: right_reg,
-                        });
+                        }, node);
                     }
 
                     ast::OpType::Multiply => {
-                        self.instructions.push(bytecode::Opcode::Mul {
+                        self.push_instruction(bytecode::Opcode::Mul {
                             dst,
                             arg1: left_reg,
                             arg2: right_reg,
-                        });
+                        }, node);
                     }
 
                     ast::OpType::Divide => {
-                        self.instructions.push(bytecode::Opcode::Div {
+                        self.push_instruction(bytecode::Opcode::Div {
                             dst,
                             arg1: left_reg,
                             arg2: right_reg,
-                        });
+                        }, node);
                     }
                 }
 
@@ -90,10 +100,11 @@ impl<'a> Bytegen<'a> {
                 let dst = self.next_reg;
                 self.next_reg += 1;
 
-                self.instructions.push(bytecode::Opcode::Load {
+                let name: &'a str = Box::leak(name.clone().into_boxed_str());
+                self.push_instruction(bytecode::Opcode::LoadName {
                     dst,
-                    val: value::Value::String(Arc::new(name.as_str())),
-                });
+                    name,
+                }, node);
 
                 dst
             }
@@ -104,24 +115,25 @@ impl<'a> Bytegen<'a> {
 
                 for arg in args {
                     let arg_reg = self.compile_node(program, *arg);
+                    self.push_instruction(bytecode::Opcode::Push { reg: arg_reg }, node);
                     arg_regs.push(arg_reg);
                 }
 
                 let dst = self.next_reg;
                 self.next_reg += 1;
 
-                self.instructions.push(bytecode::Opcode::Call {
+                self.push_instruction(bytecode::Opcode::Call {
                     dst,
                     reg: callee_reg,
                     nargs: arg_regs.len() as u16,
-                });
+                }, node);
 
                 dst
             }
 
             ast::AstNodeType::Return { value } => {
                 let reg = self.compile_node(program, *value);
-                self.instructions.push(bytecode::Opcode::Return { reg });
+                self.push_instruction(bytecode::Opcode::Return { reg }, node);
                 reg
             }
         }
@@ -332,6 +344,16 @@ fn remap_instruction<'a>(inst: bytecode::Opcode<'a>, colors: &[u8]) -> bytecode:
         },
 
         bytecode::Opcode::Jmp { idx } => bytecode::Opcode::Jmp { idx },
+
+        bytecode::Opcode::LoadName { dst, name } => bytecode::Opcode::LoadName {
+            dst: remap_reg(dst, colors),
+            name,
+        },
+
+        bytecode::Opcode::StoreName { src, name } => bytecode::Opcode::StoreName {
+            src: remap_reg(src, colors),
+            name,
+        },
     }
 }
 
@@ -363,6 +385,8 @@ fn def_registers(inst: &bytecode::Opcode) -> Vec<u8> {
         | bytecode::Opcode::Gte { dst, .. }
         | bytecode::Opcode::Lte { dst, .. } => vec![*dst],
         bytecode::Opcode::Jmp { .. } => Vec::new(),
+        bytecode::Opcode::LoadName { dst, .. } => vec![*dst],
+        bytecode::Opcode::StoreName { src, .. } => vec![*src],
     }
 }
 
@@ -390,5 +414,7 @@ fn use_registers(inst: &bytecode::Opcode) -> Vec<u8> {
         | bytecode::Opcode::Muli { arg1, .. }
         | bytecode::Opcode::Divi { arg1, .. } => vec![*arg1],
         bytecode::Opcode::Jmp { .. } => Vec::new(),
+        bytecode::Opcode::LoadName { .. } => Vec::new(),
+        bytecode::Opcode::StoreName { .. } => Vec::new(),
     }
 }

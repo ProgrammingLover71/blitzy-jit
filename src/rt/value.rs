@@ -18,6 +18,11 @@ pub enum Value<'a> {
         code: &'a bytecode::Block<'a>,
         arity: u16,
     },
+    NativeFunction {
+        name: &'a String,
+        func: fn(Vec<Value<'a>>) -> Result<Value<'a>, error::Error>,
+        arity: u16,
+    },
 }
 
 impl<'a> fmt::Display for Value<'a> {
@@ -30,6 +35,7 @@ impl<'a> fmt::Display for Value<'a> {
             Value::Bool(b) => write!(f, "{}", if *b { "True" } else { "False" }),
             Value::String(s) => write!(f, "{}", s),
             Value::Function { name, .. } => write!(f, "<function '{}'>", name),
+            Value::NativeFunction { name, .. } => write!(f, "<native function '{}'>", name),
         }
     }
 }
@@ -306,6 +312,7 @@ impl<'a> Value<'a> {
             Value::Bool(_) => String::from("bool"),
             Value::String(_) => String::from("str"),
             Value::Function { .. } => String::from("Callable"),
+            Value::NativeFunction { .. } => String::from("Callable"),
         }
     }
 }

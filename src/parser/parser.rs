@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::parser::ast;
 use crate::lexer::*;
 use crate::error::*;
@@ -33,20 +31,12 @@ impl<'a> Parser<'a> {
         self.current = self.lexer.get_token();
     }
 
-    fn current(&self) -> token::Token {
-        self.current.clone()
-    }
-
     fn match_token(&mut self, t_type: token::TokenType, err: Error) -> Result<(), Error> {
         if self.current.t_type == t_type {
             Ok(())
         } else {
             Err(err)
         }
-    }
-
-    fn check_token(&mut self, t_type: token::TokenType) -> bool {
-        self.current.t_type == t_type
     }
 
     /*
@@ -222,7 +212,7 @@ impl<'a> Parser<'a> {
 
 
     pub fn statement(&mut self) -> Result<Option<ast::NodeId>, Error> {
-        println!("Current token: {:?}", self.current);
+        // println!("Current token: {:?}", self.current);
 
         match self.current.t_type {
             token::TokenType::KReturn => {

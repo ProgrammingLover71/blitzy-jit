@@ -8,6 +8,8 @@ pub enum ErrorType {
     StackUnderflowError,
     TypeError,
     ValueError,
+
+    NameError,
 }
 
 #[derive(Clone, Debug)]
