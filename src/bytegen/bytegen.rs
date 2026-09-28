@@ -38,6 +38,8 @@ impl<'a> Bytegen<'a> {
                 self.instructions.push(bytecode::Opcode::Load {
                     dst,
                     val: value::Value::Int(*value),
+                    line: node.n_line,
+                    col: node.n_col,
                 });
 
                 dst
@@ -55,6 +57,8 @@ impl<'a> Bytegen<'a> {
                             dst,
                             arg1: left_reg,
                             arg2: right_reg,
+                            line: node.n_line,
+                            col: node.n_col,
                         });
                     }
 
@@ -63,6 +67,8 @@ impl<'a> Bytegen<'a> {
                             dst,
                             arg1: left_reg,
                             arg2: right_reg,
+                            line: node.n_line,
+                            col: node.n_col,
                         });
                     }
 
@@ -71,6 +77,8 @@ impl<'a> Bytegen<'a> {
                             dst,
                             arg1: left_reg,
                             arg2: right_reg,
+                            line: node.n_line,
+                            col: node.n_col,
                         });
                     }
 
@@ -79,6 +87,8 @@ impl<'a> Bytegen<'a> {
                             dst,
                             arg1: left_reg,
                             arg2: right_reg,
+                            line: node.n_line,
+                            col: node.n_col,
                         });
                     }
                 }
@@ -92,7 +102,9 @@ impl<'a> Bytegen<'a> {
 
                 self.instructions.push(bytecode::Opcode::Load {
                     dst,
-                    val: value::Value::String(Arc::new(name.as_str())),
+                    val: value::Value::String(name.as_str().into()),
+                    line: node.n_line,
+                    col: node.n_col,
                 });
 
                 dst
@@ -114,6 +126,8 @@ impl<'a> Bytegen<'a> {
                     dst,
                     reg: callee_reg,
                     nargs: arg_regs.len() as u16,
+                    line: node.n_line,
+                    col: node.n_col,
                 });
 
                 dst
@@ -121,7 +135,11 @@ impl<'a> Bytegen<'a> {
 
             ast::AstNodeType::Return { value } => {
                 let reg = self.compile_node(program, *value);
-                self.instructions.push(bytecode::Opcode::Return { reg });
+                self.instructions.push(bytecode::Opcode::Return {
+                    reg,
+                    line: node.n_line,
+                    col: node.n_col,
+                });
                 reg
             }
         }
@@ -162,7 +180,7 @@ impl<'a> Bytegen<'a> {
                 live.remove(reg);
             }
 
-            if let bytecode::Opcode::Move { dst, src } = inst {
+            if let bytecode::Opcode::Move { dst, src, .. } = inst {
                 if dst != src {
                     move_bias.insert(*dst, *src);
                 }
@@ -212,126 +230,174 @@ impl<'a> Bytegen<'a> {
 
 fn remap_instruction<'a>(inst: bytecode::Opcode<'a>, colors: &[u8]) -> bytecode::Opcode<'a> {
     match inst {
-        bytecode::Opcode::Return { reg } => bytecode::Opcode::Return {
+        bytecode::Opcode::Return { reg, line, col } => bytecode::Opcode::Return {
             reg: remap_reg(reg, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Call { dst, reg, nargs } => bytecode::Opcode::Call {
+        bytecode::Opcode::Call { dst, reg, nargs, line, col } => bytecode::Opcode::Call {
             dst: remap_reg(dst, colors),
             reg: remap_reg(reg, colors),
             nargs,
+            line,
+            col,
         },
 
-        bytecode::Opcode::Load { dst, val } => bytecode::Opcode::Load {
+        bytecode::Opcode::Load { dst, val, line, col } => bytecode::Opcode::Load {
             dst: remap_reg(dst, colors),
             val,
+            line,
+            col,
         },
 
-        bytecode::Opcode::Move { dst, src } => {
+        bytecode::Opcode::Move { dst, src, line, col } => {
             let dst = remap_reg(dst, colors);
             let src = remap_reg(src, colors);
-            if dst == src {
-                bytecode::Opcode::Move { dst, src }
-            } else {
-                bytecode::Opcode::Move { dst, src }
-            }
+            bytecode::Opcode::Move { dst, src, line, col }
         }
 
-        bytecode::Opcode::Push { reg } => bytecode::Opcode::Push {
+        bytecode::Opcode::Ldloc { dst, local, line, col } => bytecode::Opcode::Ldloc {
+            dst: remap_reg(dst, colors),
+            local,
+            line,
+            col,
+        },
+
+        bytecode::Opcode::Stloc { local, reg, line, col } => bytecode::Opcode::Stloc {
+            local,
             reg: remap_reg(reg, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Pushi { imm } => bytecode::Opcode::Pushi { imm },
-
-        bytecode::Opcode::Pop { reg } => bytecode::Opcode::Pop {
+        bytecode::Opcode::Push { reg, line, col } => bytecode::Opcode::Push {
             reg: remap_reg(reg, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Add { dst, arg1, arg2 } => bytecode::Opcode::Add {
+        bytecode::Opcode::Pushi { imm, line, col } => bytecode::Opcode::Pushi { imm, line, col },
+
+        bytecode::Opcode::Pop { reg, line, col } => bytecode::Opcode::Pop {
+            reg: remap_reg(reg, colors),
+            line,
+            col,
+        },
+
+        bytecode::Opcode::Add { dst, arg1, arg2, line, col } => bytecode::Opcode::Add {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Addi { dst, arg1, imm } => bytecode::Opcode::Addi {
+        bytecode::Opcode::Addi { dst, arg1, imm, line, col } => bytecode::Opcode::Addi {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             imm,
+            line,
+            col,
         },
 
-        bytecode::Opcode::Sub { dst, arg1, arg2 } => bytecode::Opcode::Sub {
+        bytecode::Opcode::Sub { dst, arg1, arg2, line, col } => bytecode::Opcode::Sub {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Subi { dst, arg1, imm } => bytecode::Opcode::Subi {
+        bytecode::Opcode::Subi { dst, arg1, imm, line, col } => bytecode::Opcode::Subi {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             imm,
+            line,
+            col,
         },
 
-        bytecode::Opcode::Mul { dst, arg1, arg2 } => bytecode::Opcode::Mul {
+        bytecode::Opcode::Mul { dst, arg1, arg2, line, col } => bytecode::Opcode::Mul {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Muli { dst, arg1, imm } => bytecode::Opcode::Muli {
+        bytecode::Opcode::Muli { dst, arg1, imm, line, col } => bytecode::Opcode::Muli {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             imm,
+            line,
+            col,
         },
 
-        bytecode::Opcode::Div { dst, arg1, arg2 } => bytecode::Opcode::Div {
+        bytecode::Opcode::Div { dst, arg1, arg2, line, col } => bytecode::Opcode::Div {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Divi { dst, arg1, imm } => bytecode::Opcode::Divi {
+        bytecode::Opcode::Divi { dst, arg1, imm, line, col } => bytecode::Opcode::Divi {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             imm,
+            line,
+            col,
         },
 
-        bytecode::Opcode::Eq { dst, arg1, arg2 } => bytecode::Opcode::Eq {
+        bytecode::Opcode::Eq { dst, arg1, arg2, line, col } => bytecode::Opcode::Eq {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Neq { dst, arg1, arg2 } => bytecode::Opcode::Neq {
+        bytecode::Opcode::Neq { dst, arg1, arg2, line, col } => bytecode::Opcode::Neq {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Gt { dst, arg1, arg2 } => bytecode::Opcode::Gt {
+        bytecode::Opcode::Gt { dst, arg1, arg2, line, col } => bytecode::Opcode::Gt {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Lt { dst, arg1, arg2 } => bytecode::Opcode::Lt {
+        bytecode::Opcode::Lt { dst, arg1, arg2, line, col } => bytecode::Opcode::Lt {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Gte { dst, arg1, arg2 } => bytecode::Opcode::Gte {
+        bytecode::Opcode::Gte { dst, arg1, arg2, line, col } => bytecode::Opcode::Gte {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Lte { dst, arg1, arg2 } => bytecode::Opcode::Lte {
+        bytecode::Opcode::Lte { dst, arg1, arg2, line, col } => bytecode::Opcode::Lte {
             dst: remap_reg(dst, colors),
             arg1: remap_reg(arg1, colors),
             arg2: remap_reg(arg2, colors),
+            line,
+            col,
         },
 
-        bytecode::Opcode::Jmp { idx } => bytecode::Opcode::Jmp { idx },
+        bytecode::Opcode::Jmp { idx, line, col } => bytecode::Opcode::Jmp { idx, line, col },
     }
 }
 
@@ -345,9 +411,11 @@ fn def_registers(inst: &bytecode::Opcode) -> Vec<u8> {
         bytecode::Opcode::Call { dst, .. } => vec![*dst],
         bytecode::Opcode::Load { dst, .. } => vec![*dst],
         bytecode::Opcode::Move { dst, .. } => vec![*dst],
+        bytecode::Opcode::Ldloc { dst, .. } => vec![*dst],
+        bytecode::Opcode::Stloc { .. } => Vec::new(),
         bytecode::Opcode::Push { .. } => Vec::new(),
         bytecode::Opcode::Pushi { .. } => Vec::new(),
-        bytecode::Opcode::Pop { reg } => vec![*reg],
+        bytecode::Opcode::Pop { reg, .. } => vec![*reg],
         bytecode::Opcode::Add { dst, .. }
         | bytecode::Opcode::Addi { dst, .. }
         | bytecode::Opcode::Sub { dst, .. }
@@ -368,11 +436,13 @@ fn def_registers(inst: &bytecode::Opcode) -> Vec<u8> {
 
 fn use_registers(inst: &bytecode::Opcode) -> Vec<u8> {
     match inst {
-        bytecode::Opcode::Return { reg } => vec![*reg],
+        bytecode::Opcode::Return { reg, .. } => vec![*reg],
         bytecode::Opcode::Call { reg, .. } => vec![*reg],
         bytecode::Opcode::Load { .. } => Vec::new(),
-        bytecode::Opcode::Move { dst: _, src } => vec![*src],
-        bytecode::Opcode::Push { reg } => vec![*reg],
+        bytecode::Opcode::Move { src, .. } => vec![*src],
+        bytecode::Opcode::Ldloc { .. } => Vec::new(),
+        bytecode::Opcode::Stloc { reg, .. } => vec![*reg],
+        bytecode::Opcode::Push { reg, .. } => vec![*reg],
         bytecode::Opcode::Pushi { .. } => Vec::new(),
         bytecode::Opcode::Pop { .. } => Vec::new(),
         bytecode::Opcode::Add { arg1, arg2, .. }
