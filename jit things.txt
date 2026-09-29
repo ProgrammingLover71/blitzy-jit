@@ -1,0 +1,7 @@
+1. We need *rough* static analysis -- Cranelift needs function references to also include the function that is *referencing*,
+   soooo we need a reference map
+
+2. The Tier 1 JIT (_Supersonic_) needs to compile whole methods. The Tier 2 JIT (_Superluminal_) is tracing, and we'll need
+   to somehow replace the OG Tier 1 method code. Maybe a bytecode + compiled code cache? (but then we also need deopt, so I
+   think the cache will work :D)
+   
