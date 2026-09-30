@@ -1,7 +1,65 @@
-1. We need *rough* static analysis -- Cranelift needs function references to also include the function that is *referencing*,
-   soooo we need a reference map
+1. Static/reference analysis
 
-2. The Tier 1 JIT (_Supersonic_) needs to compile whole methods. The Tier 2 JIT (_Superluminal_) is tracing, and we'll need
-   to somehow replace the OG Tier 1 method code. Maybe a bytecode + compiled code cache? (but then we also need deopt, so I
-   think the cache will work :D)
-   
+   We need rough static reference information for functions.
+
+   Build a conservative caller/reference graph:
+
+       Function A
+         ├── calls → Function B
+         └── references → Function C
+
+   This is needed for dependency tracking, invalidation, tiering,
+   and eventually deoptimization.
+
+   The graph is approximate because dynamic calls/references cannot
+   always be resolved statically.
+
+
+2. Tiered JIT
+
+   Tier 1 (_Supersonic_) compiles complete methods.
+
+   Tier 2 (_Superluminal_) is tracing-based and produces specialized
+   code for hot execution paths.
+
+   Compiled code should be versioned rather than replaced:
+
+       Function
+         ├── bytecode
+         └── compiled versions
+               ├── Supersonic
+               └── Superluminal traces
+
+   Keep the Tier 1 version as a fallback when a Tier 2 guard fails.
+
+
+3. Compiled-code cache
+
+   Maintain a cache of compiled versions associated with bytecode /
+   function identities.
+
+   Each compiled version needs:
+       - machine code
+       - tier
+       - dependencies
+       - entry point
+       - deoptimization metadata
+
+
+4. Deoptimization
+
+   Superluminal traces require guards.
+
+   On guard failure, reconstruct the logical VM state from deopt
+   metadata and transfer execution back to a valid lower tier.
+
+       Superluminal
+           ↓ guard failure
+       deopt metadata
+           ↓
+       VM register state + bytecode PC
+           ↓
+       Supersonic / interpreter
+
+   Deopt metadata must map native machine locations back to the
+   VM's logical registers/stack.
