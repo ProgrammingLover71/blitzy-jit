@@ -16,12 +16,12 @@ pub enum TokenType {
 
     // Symbols
     Plus, Minus, Star, Slash,
-    LParen, RParen, Comma,
+    LParen, RParen, Comma, Colon,
 
     Identifier,
 
     // Keywords
-    KReturn,
+    KReturn, KIf, KElse,
 }
 
 #[derive(Clone, Debug)]

@@ -1,4 +1,5 @@
 use crate::lexer::token::{Token, TokenType};
+use std::collections::VecDeque;
 
 pub struct Lexer {
     pub source: String,
@@ -9,12 +10,17 @@ pub struct Lexer {
     // Line/column data
     line: usize,
     col: usize,
+    indent_levels: Vec<usize>,
+    pending_tokens: VecDeque<Token>,
+    at_line_start: bool,
 }
 
 impl Lexer {
     pub fn new(source: String) -> Self {
         let mut new_source = source;
-        new_source.push('\n');
+        if !new_source.ends_with('\n') {
+            new_source.push('\n');
+        }
         
         let mut s = Self {
             source: new_source,
@@ -22,6 +28,9 @@ impl Lexer {
             index: -1,
             line: 1,
             col: 1,
+            indent_levels: vec![0],
+            pending_tokens: VecDeque::new(),
+            at_line_start: true,
         };
 
         s.next();
@@ -38,6 +47,99 @@ impl Lexer {
     }
 
     pub fn get_token(&mut self) -> Token {
+        if let Some(token) = self.pending_tokens.pop_front() {
+            return token;
+        }
+
+        if self.at_line_start {
+            let line = self.line;
+            let mut indentation = 0;
+
+            while self.current == ' ' || self.current == '\t' || self.current == '\r' {
+                match self.current {
+                    ' ' => {
+                        indentation += 1;
+                        self.col += 1;
+                    }
+                    '\t' => {
+                        indentation += 1;
+                        self.col += 1;
+                    }
+                    '\r' => self.col += 1,
+                    _ => unreachable!(),
+                }
+                self.next();
+            }
+
+            if self.current == '\n' {
+                let newline = Token {
+                    t_type: TokenType::Newline,
+                    t_value: "\n".to_string(),
+                    t_line: self.line as u32,
+                    t_col: self.col as u32,
+                };
+                self.line += 1;
+                self.col = 1;
+                self.next();
+                return newline;
+            }
+
+            if self.current == '\x00' {
+                while self.indent_levels.len() > 1 {
+                    self.indent_levels.pop();
+                    self.pending_tokens.push_back(Token {
+                        t_type: TokenType::Dedent,
+                        t_value: String::new(),
+                        t_line: line as u32,
+                        t_col: 1,
+                    });
+                }
+                self.at_line_start = false;
+                self.pending_tokens.push_back(Token {
+                    t_type: TokenType::EndOfFile,
+                    t_value: String::new(),
+                    t_line: line as u32,
+                    t_col: self.col as u32,
+                });
+                return self.pending_tokens.pop_front().unwrap();
+            }
+
+            self.at_line_start = false;
+            let current_indentation = *self.indent_levels.last().unwrap();
+            if indentation > current_indentation {
+                self.indent_levels.push(indentation);
+                self.pending_tokens.push_back(Token {
+                    t_type: TokenType::Indent,
+                    t_value: String::new(),
+                    t_line: line as u32,
+                    t_col: 1,
+                });
+            } else if indentation < current_indentation {
+                while indentation < *self.indent_levels.last().unwrap() {
+                    self.indent_levels.pop();
+                    self.pending_tokens.push_back(Token {
+                        t_type: TokenType::Dedent,
+                        t_value: String::new(),
+                        t_line: line as u32,
+                        t_col: 1,
+                    });
+                }
+
+                if indentation != *self.indent_levels.last().unwrap() {
+                    self.pending_tokens.push_back(Token {
+                        t_type: TokenType::Error,
+                        t_value: "Inconsistent indentation".to_string(),
+                        t_line: line as u32,
+                        t_col: 1,
+                    });
+                }
+            }
+
+            if let Some(token) = self.pending_tokens.pop_front() {
+                return token;
+            }
+        }
+
         let start_line = self.line;
         let start_col = self.col;
 
@@ -59,6 +161,7 @@ impl Lexer {
         if self.current == '\n' {
             self.line += 1;
             self.col = 1;
+            self.at_line_start = true;
             let newline = Token {
                 t_type: TokenType::Newline,
                 t_value: "\n".to_string(),
@@ -165,6 +268,18 @@ impl Lexer {
             return comma;
         }
 
+        if self.current == ':' {
+            self.col += 1;
+            let colon = Token {
+                t_type: TokenType::Colon,
+                t_value: ":".to_string(),
+                t_line: start_line as u32,
+                t_col: start_col as u32,
+            };
+            self.next();
+            return colon;
+        }
+
         if self.current.is_ascii_digit() {
             let mut value = String::new();
             while self.current.is_ascii_digit() {
@@ -189,21 +304,43 @@ impl Lexer {
                 self.next();
             }
 
-            if value == "return" {
-                return Token {
-                    t_type: TokenType::KReturn,
-                    t_value: value,
-                    t_line: start_line as u32,
-                    t_col: start_col as u32,
-                };
-            }
+            match value {
+                val if val == "return".to_string() => {
+                    return Token {
+                        t_type: TokenType::KReturn,
+                        t_value: val,
+                        t_line: start_line as u32,
+                        t_col: start_col as u32,
+                    };
+                }
 
-            return Token {
-                t_type: TokenType::Identifier,
-                t_value: value,
-                t_line: start_line as u32,
-                t_col: start_col as u32,
-            };
+                val if val == "if".to_string() => {
+                    return Token {
+                        t_type: TokenType::KIf,
+                        t_value: val,
+                        t_line: start_line as u32,
+                        t_col: start_col as u32,
+                    };
+                }
+
+                val if val == "else".to_string() => {
+                    return Token {
+                        t_type: TokenType::KElse,
+                        t_value: val,
+                        t_line: start_line as u32,
+                        t_col: start_col as u32,
+                    };
+                }
+                
+                _ => {
+                    return Token {
+                        t_type: TokenType::Identifier,
+                        t_value: value,
+                        t_line: start_line as u32,
+                        t_col: start_col as u32,
+                    };
+                }
+            }
         }
 
         let ch = self.current.to_string();

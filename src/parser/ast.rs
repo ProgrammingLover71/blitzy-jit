@@ -30,6 +30,16 @@ pub enum AstNodeType {
 
     Return {
         value: NodeId
+    },
+
+    If {
+        condition: NodeId,
+        then_branch: NodeId,
+        else_branch: Option<NodeId>
+    },
+
+    Block {
+        statements: Vec<NodeId>
     }
 }
 
@@ -131,10 +141,20 @@ impl fmt::Display for AstNodeType {
                 value
             } => write!(f, "Return(value: {})", value.0),
 
+            AstNodeType::If { 
+                condition,
+                then_branch,
+                else_branch
+            } => write!(f, "If(condition: {}, then: {}, else: {:?})", condition.0, then_branch.0, else_branch.map(|id| id.0)),
+
             AstNodeType::Call { 
                 callee,
                 args
             } => write!(f, "Call(callee: {}, args: {:?})", callee.0, args.iter().map(|id| id.0).collect::<Vec<_>>()),
+            
+            AstNodeType::Block { 
+                statements
+            } => write!(f, "Block(statements: {:?})", statements.iter().map(|id| id.0).collect::<Vec<_>>()),
         }
     }
 }

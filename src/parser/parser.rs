@@ -29,6 +29,7 @@ impl<'a> Parser<'a> {
 
     fn next(&mut self) {
         self.current = self.lexer.get_token();
+        println!("Token: {:?}", self.current);
     }
 
     fn match_token(&mut self, t_type: token::TokenType, err: Error) -> Result<(), Error> {
@@ -37,6 +38,10 @@ impl<'a> Parser<'a> {
         } else {
             Err(err)
         }
+    }
+
+    fn check_token(&self, t_type: token::TokenType) -> bool {
+        self.current.t_type == t_type
     }
 
     /*
@@ -49,6 +54,7 @@ impl<'a> Parser<'a> {
         expr := term (PLUS|MINUS term)*
 
         statement := RETURN expr NL
+                  |= IF expr COLON NL INDENT statement* DEDENT (ELSE COLON NL INDENT statement* DEDENT)?
                   |= expr NL
 
         program := statement*
@@ -212,38 +218,23 @@ impl<'a> Parser<'a> {
 
 
     pub fn statement(&mut self) -> Result<Option<ast::NodeId>, Error> {
-        // println!("Current token: {:?}", self.current);
+        println!("Current token: {:?}", self.current);
 
         match self.current.t_type {
             token::TokenType::KReturn => {
-                let line = self.current.t_line;
-                let col = self.current.t_col;
-
-                self.next();
-                let expr = self.expr()?;
-
-                self.match_token(TokenType::Newline, Error { 
-                    pe_line: line, 
-                    pe_col: col, 
-                    pe_type: ErrorType::InvalidSyntaxError, 
-                    pe_msg: String::from("Expected newline after return statement")
-                })?;
-
-                Ok(Some(self.arena.alloc(ast::AstNode {
-                    n_line: line,
-                    n_col:  col,
-                    n_type: ast::AstNodeType::Return { 
-                        value: expr 
-                    }
-                })))
+                self.parse_return_statement()
             }
 
-            TokenType::Newline => {
+            token::TokenType::KIf => {
+                self.parse_if_statement()
+            }
+
+            token::TokenType::Newline => {
                 self.next();
                 self.statement()
             }
 
-            TokenType::EndOfFile => {
+            token::TokenType::EndOfFile => {
                 Ok(None)
             }
 
@@ -253,12 +244,13 @@ impl<'a> Parser<'a> {
 
                 match try_expr {
                     Ok(expr) => {
-                        self.match_token(TokenType::Newline, Error { 
+                        self.match_token(token::TokenType::Newline, Error { 
                             pe_line: self.current.t_line, 
                             pe_col:  self.current.t_col, 
                             pe_type: ErrorType::InvalidSyntaxError,
                             pe_msg: String::from("Expected newline after expression statement")
                         })?;
+                        self.next();
                         Ok(Some(expr))
                     }
 
@@ -271,6 +263,126 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+
+    fn parse_return_statement(&mut self) -> Result<Option<ast::NodeId>, Error> {
+        let line = self.current.t_line;
+        let col = self.current.t_col;
+    
+        self.next();
+        let expr = self.expr()?;
+    
+        self.match_token(TokenType::Newline, Error { 
+            pe_line: line, 
+            pe_col: col, 
+            pe_type: ErrorType::InvalidSyntaxError, 
+            pe_msg: String::from("Expected newline after return statement")
+        })?;
+        self.next();
+    
+        Ok(Some(self.arena.alloc(ast::AstNode {
+            n_line: line,
+            n_col:  col,
+            n_type: ast::AstNodeType::Return { 
+                value: expr 
+            }
+        })))
+    }
+
+
+    fn parse_if_statement(&mut self) -> Result<Option<ast::NodeId>, Error> {
+        let line = self.current.t_line;
+        let col = self.current.t_col;
+
+        self.next();
+        let condition = self.expr()?;
+
+        self.match_token(TokenType::Colon, Error { 
+            pe_line: self.current.t_line, 
+            pe_col: self.current.t_col, 
+            pe_type: ErrorType::InvalidSyntaxError, 
+            pe_msg: String::from("Expected colon after if condition")
+        })?;
+
+        self.next();
+        self.match_token(TokenType::Newline, Error { 
+            pe_line: self.current.t_line, 
+            pe_col: self.current.t_col, 
+            pe_type: ErrorType::InvalidSyntaxError, 
+            pe_msg: String::from("Expected newline after if statement")
+        })?;
+        self.next();
+
+        let then_branch = self.parse_block()?;
+        let mut else_branch = None;
+
+        if self.check_token(TokenType::KElse) {
+            self.next();
+            self.match_token(TokenType::Colon, Error { 
+                pe_line: self.current.t_line, 
+                pe_col: self.current.t_col, 
+                pe_type: ErrorType::InvalidSyntaxError, 
+                pe_msg: String::from("Expected colon after else")
+            })?;
+
+            self.next();
+            self.match_token(TokenType::Newline, Error { 
+                pe_line: self.current.t_line, 
+                pe_col: self.current.t_col, 
+                pe_type: ErrorType::InvalidSyntaxError, 
+                pe_msg: String::from("Expected newline after else")
+            })?;
+            self.next();
+
+            else_branch = Some(self.parse_block()?);
+        }
+        
+        Ok(Some(self.arena.alloc(ast::AstNode {
+            n_line: line,
+            n_col:  col,
+            n_type: ast::AstNodeType::If { 
+                condition,
+                then_branch,
+                else_branch
+            }
+        })))
+    }
+
+
+    fn parse_block(&mut self) -> Result<ast::NodeId, Error> {
+        self.match_token(TokenType::Indent, Error { 
+            pe_line: self.current.t_line, 
+            pe_col: self.current.t_col, 
+            pe_type: ErrorType::InvalidSyntaxError, 
+            pe_msg: String::from("Expected indentation for block")
+        })?;
+
+        self.next();
+        let mut statements = Vec::new();
+
+        while !self.check_token(TokenType::Dedent) && !self.check_token(TokenType::EndOfFile) {
+            if let Some(stmt) = self.statement()? {
+                statements.push(stmt);
+            }
+        }
+
+        self.match_token(TokenType::Dedent, Error { 
+            pe_line: self.current.t_line, 
+            pe_col: self.current.t_col, 
+            pe_type: ErrorType::InvalidSyntaxError, 
+            pe_msg: String::from("Expected dedentation after block")
+        })?;
+
+        self.next();
+
+        Ok(self.arena.alloc(ast::AstNode {
+            n_line: self.current.t_line,
+            n_col:  self.current.t_col,
+            n_type: ast::AstNodeType::Block { 
+                statements
+            }
+        }))
     }
 
 
