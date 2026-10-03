@@ -56,9 +56,17 @@ pub struct HirBlock {
 #[derive(Debug)]
 pub struct HirFunction {
     pub name: String,
-    pub params: Vec<String>,
+    pub params: Vec<(String, HirType)>,
+    pub returns: HirType,
     pub block_ids: Vec<HirBlockId>,
     pub nodes: Vec<HirNode>
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum HirType {
+    Int,
+    Float,
+    Any
 }
 
 #[derive(Debug)]
@@ -86,10 +94,11 @@ impl HirBuilder {
         }
     }
 
-    pub fn start_function(&mut self, name: String, params: Vec<String>) -> HirFunctionId {
+    pub fn start_function(&mut self, name: String, params: Vec<(String, HirType)>, returns: HirType) -> HirFunctionId {
         let func = HirFunction {
             name,
             params,
+            returns,
             block_ids: Vec::new(),
             nodes: Vec::new(),
         };
