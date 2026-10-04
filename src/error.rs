@@ -34,7 +34,7 @@ impl fmt::Display for ErrorType {
             ErrorType::StackUnderflowError => write!(f, "StackUnderflowError"),
             ErrorType::TypeError => write!(f, "TypeError"),
             ErrorType::ValueError => write!(f, "ValueError"),
-            _ => unreachable!()
+            ErrorType::NameError => write!(f, "NameError")
         }
     }
 }

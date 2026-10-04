@@ -59,7 +59,6 @@ pub struct HirFunction {
     pub params: Vec<(String, HirType)>,
     pub returns: HirType,
     pub block_ids: Vec<HirBlockId>,
-    pub nodes: Vec<HirNode>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -99,8 +98,7 @@ impl HirBuilder {
             name,
             params,
             returns,
-            block_ids: Vec::new(),
-            nodes: Vec::new(),
+            block_ids: Vec::new()
         };
         self.program.funcs.push(func);
         HirFunctionId((self.program.funcs.len() - 1) as u32)

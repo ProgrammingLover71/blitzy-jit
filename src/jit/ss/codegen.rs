@@ -52,9 +52,7 @@ impl Codegen {
             ir::UserFuncName::user(0, func_id.0),
             self.make_cranelift_sig(&lir_fn.params, &lir_fn.returns)
         );
-        let mut function_ctx = FunctionBuilderContext::new();
-        let mut builder = FunctionBuilder::new(&mut func, &mut function_ctx);
-
+        
         let ctx = Context::for_function(func);
         ctx
     }
