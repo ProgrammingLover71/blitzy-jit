@@ -2,13 +2,14 @@ use crate::lir::*;
 
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
-use cranelift_module::{Module, ModuleError};
+use cranelift_module::{Module, ModuleError, Linkage};
 use cranelift_codegen::{Context, ir, isa};
 
 
 pub struct Codegen {
-    builder_context: FunctionBuilderContext,
-    context: codegen::Context,
+    func_ctx: FunctionBuilderContext,
+    ctx: Option<Context>,
+
     module: JITModule,
     lir_prog: LirProgram
 }
@@ -19,41 +20,58 @@ impl Codegen {
         let module = JITModule::new(builder);
 
         Ok(Self {
-            builder_context: FunctionBuilderContext::new(),
-            context: module.make_context(),
+            func_ctx: FunctionBuilderContext::new(),
+            ctx: None,
             module,
             lir_prog
         })
     }
 
-    fn lirtype_to_abi_param(&self, lt: LirType) -> ir::AbiParam {
+    fn lirtype_to_clif_type(&self, lt: LirType) -> ir::Type {
         match lt {
-            LirType::I64 => ir::AbiParam::new(ir::types::I64),
-            LirType::F64 => ir::AbiParam::new(ir::types::F64),
+            LirType::I64 => ir::types::I64,
+            LirType::F64 => ir::types::F64,
             _ => unreachable!()
         }
     }
 
     fn make_cranelift_sig(&self, params: &Vec<LirType>, returns: &LirType) -> ir::Signature {
-        let mut sig = ir::Signature::new(self.module.isa().default_call_conv());
+        let mut sig = self.module.make_signature();
         
         for param in params {
-            sig.params.push(self.lirtype_to_abi_param(*param));
+            sig.params.push(ir::AbiParam::new(self.lirtype_to_clif_type(*param)));
         } 
         
-        sig.returns.push(self.lirtype_to_abi_param(*returns));
+        sig.returns.push(ir::AbiParam::new(self.lirtype_to_clif_type(*returns)));
         sig
     }
 
-    pub fn start_function(&mut self, func_id: LirFunctionId) -> Context {
-        let lir_fn = self.lir_prog.functions.get(func_id.0 as usize).unwrap();
+    pub fn start_function(&mut self, func_id: LirFunctionId) -> &Context {
+        let lir_fn = self
+            .lir_prog
+            .functions
+            .get(func_id.0 as usize)
+            .unwrap();
 
-        let mut func = ir::Function::with_name_signature(
+        let sig = self.make_cranelift_sig(
+            &lir_fn.params, 
+            &lir_fn.returns
+        ); // Create the signature
+
+        // Define the function
+        let func = ir::Function::with_name_signature(
             ir::UserFuncName::user(0, func_id.0),
-            self.make_cranelift_sig(&lir_fn.params, &lir_fn.returns)
+            sig
         );
         
-        let ctx = Context::for_function(func);
-        ctx
+        let mut ctx = self.module.make_context();
+        ctx.func = func;
+
+        self.ctx = Some(ctx);
+        &self.ctx
+    }
+
+    pub fn compile_function(&mut self, func_id: LirFunctionId) -> *const u8 {
+        
     }
 }

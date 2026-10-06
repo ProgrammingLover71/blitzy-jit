@@ -64,14 +64,31 @@ impl<'a> Parser<'a> {
         match self.current.t_type {
             token::TokenType::Int => {
                 // .unwrap() here is safe, Int tokens always have a valid int associated with them
-                let val = self.current.t_value.parse::<i64>().unwrap();
+                let val = self.current.t_value.parse::<i64>();
+                let i_val = match val {
+                    Ok(int_val) => int_val,
+                    Err(_) => {
+                        return Err(Error {
+                            pe_line: self.current.t_line,
+                            pe_col:  self.current.t_col,
+                            pe_type: ErrorType::InvalidLiteralError,
+                            pe_msg:  format!(
+                                "int literal out of range: {}",
+                                self.current.t_value
+                            )
+                        });
+                    }
+                };
                 self.next();
 
+                let ln = self.current.t_line;
+                let col = self.current.t_col;
+
                 Ok(self.arena.alloc(ast::AstNode {
-                    n_line: self.current.t_line,
-                    n_col: self.current.t_col,
+                    n_line: ln,
+                    n_col:  col,
                     n_type: ast::AstNodeType::IntLiteral { 
-                        value: val 
+                        value: i_val 
                     }
                 }))
             }
@@ -84,7 +101,7 @@ impl<'a> Parser<'a> {
                     pe_line: self.current.t_line, 
                     pe_col:  self.current.t_col, 
                     pe_type: ErrorType::InvalidSyntaxError,
-                    pe_msg: String::from("Expected closing parenthesis")
+                    pe_msg:  String::from("Expected closing parenthesis")
                 })?;
 
                 self.next();
@@ -95,9 +112,12 @@ impl<'a> Parser<'a> {
                 let name = self.current.t_value.clone();
                 self.next();
 
+                let ln = self.current.t_line;
+                let col = self.current.t_col;
+
                 Ok(self.arena.alloc(ast::AstNode {
-                    n_line: self.current.t_line,
-                    n_col:  self.current.t_col,
+                    n_line: ln,
+                    n_col:  col,
                     n_type: ast::AstNodeType::Ident { 
                         name 
                     }
@@ -109,7 +129,7 @@ impl<'a> Parser<'a> {
                     pe_line: self.current.t_line, 
                     pe_col:  self.current.t_col, 
                     pe_type: ErrorType::InvalidSyntaxError,
-                    pe_msg: String::from("Expected factor expression")
+                    pe_msg:  String::from("Expected factor expression")
                 })
             }
         }
@@ -230,7 +250,9 @@ impl<'a> Parser<'a> {
             }
 
             token::TokenType::Newline => {
-                self.next();
+                while self.check_token(TokenType::Newline) {
+                    self.next();
+                }
                 self.statement()
             }
 
@@ -275,9 +297,9 @@ impl<'a> Parser<'a> {
     
         self.match_token(TokenType::Newline, Error { 
             pe_line: line, 
-            pe_col: col, 
+            pe_col:  col, 
             pe_type: ErrorType::InvalidSyntaxError, 
-            pe_msg: String::from("Expected newline after return statement")
+            pe_msg:  String::from("Expected newline after return statement")
         })?;
         self.next();
     
@@ -300,7 +322,7 @@ impl<'a> Parser<'a> {
 
         self.match_token(TokenType::Colon, Error { 
             pe_line: self.current.t_line, 
-            pe_col: self.current.t_col, 
+            pe_col:  self.current.t_col, 
             pe_type: ErrorType::InvalidSyntaxError, 
             pe_msg: String::from("Expected colon after if condition")
         })?;
@@ -308,9 +330,9 @@ impl<'a> Parser<'a> {
         self.next();
         self.match_token(TokenType::Newline, Error { 
             pe_line: self.current.t_line, 
-            pe_col: self.current.t_col, 
+            pe_col:  self.current.t_col, 
             pe_type: ErrorType::InvalidSyntaxError, 
-            pe_msg: String::from("Expected newline after if statement")
+            pe_msg:  String::from("Expected newline after if statement")
         })?;
         self.next();
 
@@ -321,17 +343,17 @@ impl<'a> Parser<'a> {
             self.next();
             self.match_token(TokenType::Colon, Error { 
                 pe_line: self.current.t_line, 
-                pe_col: self.current.t_col, 
+                pe_col:  self.current.t_col, 
                 pe_type: ErrorType::InvalidSyntaxError, 
-                pe_msg: String::from("Expected colon after else")
+                pe_msg:  String::from("Expected colon after else")
             })?;
 
             self.next();
             self.match_token(TokenType::Newline, Error { 
                 pe_line: self.current.t_line, 
-                pe_col: self.current.t_col, 
+                pe_col:  self.current.t_col, 
                 pe_type: ErrorType::InvalidSyntaxError, 
-                pe_msg: String::from("Expected newline after else")
+                pe_msg:  String::from("Expected newline after else")
             })?;
             self.next();
 
@@ -353,9 +375,9 @@ impl<'a> Parser<'a> {
     fn parse_block(&mut self) -> Result<ast::NodeId, Error> {
         self.match_token(TokenType::Indent, Error { 
             pe_line: self.current.t_line, 
-            pe_col: self.current.t_col, 
+            pe_col:  self.current.t_col, 
             pe_type: ErrorType::InvalidSyntaxError, 
-            pe_msg: String::from("Expected indentation for block")
+            pe_msg:  String::from("Expected indentation for block")
         })?;
 
         self.next();
@@ -369,9 +391,9 @@ impl<'a> Parser<'a> {
 
         self.match_token(TokenType::Dedent, Error { 
             pe_line: self.current.t_line, 
-            pe_col: self.current.t_col, 
+            pe_col:  self.current.t_col, 
             pe_type: ErrorType::InvalidSyntaxError, 
-            pe_msg: String::from("Expected dedentation after block")
+            pe_msg:  String::from("Expected dedentation after block")
         })?;
 
         self.next();

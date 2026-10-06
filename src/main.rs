@@ -9,6 +9,8 @@ mod jit;
 use lexer::*;
 use parser::*;
 
+use lir::LocationContext as LC;
+
 fn main() {
     let mut builder = lir::LirBuilder::new();
 
@@ -22,14 +24,14 @@ fn main() {
     {
         builder.switch_block(foo_b0);
 
-        builder.const_i64(lir::Location::reg(0, lir::LocationContext::Write), 7);
-        builder.const_i64(lir::Location::reg(1, lir::LocationContext::Write), 5);
+        builder.const_i64(lir::Location::vreg(0, LC::Write), 7);
+        builder.const_i64(lir::Location::vreg(1, LC::Write), 5);
         builder.add(
-            lir::Location::reg(2, lir::LocationContext::Write),
-            lir::Location::reg(0, lir::LocationContext::Read),
-            lir::Location::reg(1, lir::LocationContext::Read),
+            lir::Location::vreg(2, LC::Write),
+            lir::Location::vreg(0, LC::Read),
+            lir::Location::vreg(1, LC::Read),
         );
-        builder.return_(lir::Location::reg(2, lir::LocationContext::Read));
+        builder.return_(lir::Location::vreg(2, LC::Read));
     }
 
     println!("{:?}", builder.get_block(foo_b0));

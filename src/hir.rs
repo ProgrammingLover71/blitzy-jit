@@ -38,13 +38,7 @@ pub enum HirNode {
 
     Return {
         value: HirNodeId
-    },
-
-    Branch {
-        condition: HirNodeId,
-        then_branch: HirBlockId,
-        else_branch: Option<HirBlockId>
-    },
+    }
 }
 
 #[derive(Debug)]
@@ -203,16 +197,6 @@ impl HirBuilder {
         let id = HirNodeId((self.program.nodes.len() - 1) as u32);
         self.push_node(id);
         self.push_root(id);
-
-        id
-    }
-
-    pub fn make_branch(&mut self, condition: HirNodeId, then_branch: HirBlockId, else_branch: Option<HirBlockId>) -> HirNodeId {
-        let node = HirNode::Branch { condition, then_branch, else_branch };
-
-        self.program.nodes.push(node);
-        let id = HirNodeId((self.program.nodes.len() - 1) as u32);
-        self.push_node(id);
 
         id
     }

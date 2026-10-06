@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LocationType {
-    Reg(u8),
+    VReg(u8),
     Local(u32),
 }
 
@@ -21,8 +21,8 @@ impl Location {
         Self { l_type, ctx }
     }
 
-    pub fn reg(n: u8, ctx: LocationContext) -> Location {
-        Self { l_type: LocationType::Reg(n), ctx }
+    pub fn vreg(n: u8, ctx: LocationContext) -> Location {
+        Self { l_type: LocationType::VReg(n), ctx }
     }
 
     pub fn local(n: u32, ctx: LocationContext) -> Location {
@@ -64,6 +64,7 @@ pub enum LirNode {
     },
 
     Call {
+        dst: Location,
         callee: Location,
         args: Vec<Location>
     },
@@ -72,10 +73,13 @@ pub enum LirNode {
         dst: Location,
         id: u32
     },
+}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LirTerminator {
     Return {
         src: Location
-    },
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -87,7 +91,8 @@ pub enum LirType {
 #[derive(Debug)]
 pub struct LirBlock {
     pub nodes: Vec<LirNodeId>,
-    pub params: Vec<(Location, LirType)>
+    pub params: Vec<(Location, LirType)>,
+    pub term: Option<LirTerminator>
 }
 
 #[derive(Debug)]
@@ -140,7 +145,8 @@ impl LirBuilder {
     pub fn start_block(&mut self, fn_id: LirFunctionId, params: Vec<(Location, LirType)>) -> LirBlockId {
         let block = LirBlock {
             nodes: Vec::new(),
-            params
+            params,
+            term: None
         };
 
         self.program.blocks.push(block);
@@ -185,6 +191,12 @@ impl LirBuilder {
         node_id
     }
 
+    fn set_term(&mut self, term: LirTerminator) {
+        if let Some(block_id) = self.current_block {
+            self.program.blocks[block_id.0 as usize].term = Some(term);
+        }
+    }
+
 
 
     pub fn const_i64(&mut self, dst: Location, value: i64) -> LirNodeId {
@@ -207,13 +219,13 @@ impl LirBuilder {
         self.push_node(node)
     }
 
-    pub fn return_(&mut self, src: Location) -> LirNodeId {
-        let node = LirNode::Return { src };
-        self.push_node(node)
+    pub fn return_(&mut self, src: Location) {
+        let term = LirTerminator::Return { src };
+        self.set_term(term);
     }
 
-    pub fn call(&mut self, callee: Location, args: Vec<Location>) -> LirNodeId {
-        let node = LirNode::Call { callee, args };
+    pub fn call(&mut self, dst: Location, callee: Location, args: Vec<Location>) -> LirNodeId {
+        let node = LirNode::Call { dst, callee, args };
         self.push_node(node)
     }
 

@@ -62,10 +62,10 @@ impl Lexer {
                         self.col += 1;
                     }
                     '\t' => {
-                        indentation += 1;
+                        indentation += 4;
                         self.col += 1;
                     }
-                    '\r' => self.col += 1,
+                    '\r' => self.col  = 1,
                     _ => unreachable!(),
                 }
                 self.next();

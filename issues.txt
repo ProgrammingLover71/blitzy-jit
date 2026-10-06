@@ -1,0 +1,24 @@
+(x) 3 - Codegen::start_function() borrow/move problem
+(x) 3 - NameError display panics
+(x) 3 - HIR has duplicate node storage
+(x) 3 - LIR Call's have no destination
+(-) 3 - LIR has no branches/jumps
+    * Temporarily removed branching
+(x) 3 - LIR blocks have no terminators
+() 3 - Lexer isn't UTF-8 safe
+
+(x) 2 - Reg(u8) conflates virtual & physical registers
+(?) 2 - Nodes can exist outside blocks
+    |
+(?) 2 - Invalid IDs become uncontrolled panics
+    |
+    * HIR/LIR should only be constructed by the builders
+() 2 - Local and Reg semantics aren't separated
+(-) 2 - LIR types don't represent Value
+    * Value types are more static-ish
+
+(x) 1 - AST source positions are off
+(x) 1 - Integer overflow causes panic
+(x) 1 - Recursive newline skipping
+(x) 1 - Indentation/tab semantics
+(x) 1 - CRLF column handling

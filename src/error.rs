@@ -4,6 +4,7 @@ use std::fmt;
 #[derive(Clone, Copy, Debug)]
 pub enum ErrorType {
     InvalidSyntaxError,
+    InvalidLiteralError,
 
     StackUnderflowError,
     TypeError,
@@ -31,6 +32,7 @@ impl fmt::Display for ErrorType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ErrorType::InvalidSyntaxError => write!(f, "InvalidSyntaxError"),
+            ErrorType::InvalidLiteralError => write!(f, "InvalidLiteralError"),
             ErrorType::StackUnderflowError => write!(f, "StackUnderflowError"),
             ErrorType::TypeError => write!(f, "TypeError"),
             ErrorType::ValueError => write!(f, "ValueError"),
