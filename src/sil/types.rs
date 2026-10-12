@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Type<'a> {
     Int64,
     Float64,

@@ -37,4 +37,9 @@ pub enum Instruction {
 }
 
 
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Terminator {
+    Return {
+        src: loc::Location
+    }
+}
