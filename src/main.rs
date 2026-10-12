@@ -2,14 +2,18 @@ mod error;
 mod lexer;
 mod parser;
 
-mod lir;
 mod sil;
 
-use lexer::*;
-use parser::*;
-
-use lir::LocationContext as LC;
-
 fn main() {
-    let a: sil::types::Type = sil::types::Type::Int64;
+    let mut b = sil::ILBuilder::new();
+
+    {
+        let foo_id = b.define_function(
+            String::from("foo"), 
+            vec![sil::Type::Int64], 
+            sil::Type::Int64
+        );
+
+        let foo_blk0 = b.make_entry_block(foo_id);
+    }
 }
