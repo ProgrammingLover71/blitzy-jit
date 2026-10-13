@@ -10,6 +10,15 @@ pub enum OptId {
     Id(usize)
 }
 
+impl OptId {
+    pub fn unwrap(&self) -> usize {
+        match self {
+            Self::None => panic!("Cannot unwrap OptId::None"),
+            Self::Id(i) => *i
+        }
+    }
+}
+
 pub struct ILBuilder<'a> {
     functions: Vec<func::Function<'a>>,
     current_function_idx: OptId,
@@ -31,42 +40,31 @@ impl<'a> ILBuilder<'a> {
             blocks: Vec::new()
         };
         self.functions.push(func);
-        return OptId::Id(self.functions.len() - 1);
+        OptId::Id(self.functions.len() - 1)
+    }
+
+    pub fn set_current_function(&mut self, function_id: OptId) {
+        self.current_function_idx = function_id;
+    }
+
+    pub fn get_function(&self, function_id: OptId) -> &func::Function {
+        self.functions.get(function_id.unwrap()).unwrap()
     }
 
     pub fn current_function(&self) -> Option<&func::Function> {
-        match self.current_function_idx {
-            OptId::None => None,
-
-            OptId::Id(id) => {
-                let fn_opt = self.functions.get(id);
-                fn_opt
-            }
-        }
+        self.functions.get(self.current_function_idx.unwrap())
     }
 
     pub fn make_entry_block(&mut self, function_id: OptId) -> OptId {
-        match function_id {
-            OptId::None => {
-                OptId::None
-            },
-
-            OptId::Id(id) => {
-                let opt_func = self.functions.get_mut(id);
+        let func = self.functions.get_mut(function_id.unwrap()).unwrap();
                 
-                if let Some(func) = opt_func {
-                    func.blocks.push(block::Block {
-                        insts: Vec::new(),
-                        params: Self::assign_params_to_locations(&func.params),
-                        term: None
-                    });
+        func.blocks.push(block::Block {
+            insts: Vec::new(),
+            params: Self::assign_params_to_locations(&func.params),
+            term: None
+        });
 
-                    return OptId::Id(self.functions.len() - 1)
-                }
-
-                OptId::None
-            }
-        }
+        OptId::Id(self.functions.len() - 1)
     }
 
     fn assign_params_to_locations(params: &Vec<types::Type<'a>>) -> Vec<(loc::Location, types::Type<'a>)> {
@@ -87,12 +85,25 @@ impl<'a> ILBuilder<'a> {
     }
 
     fn push_inst(&mut self, block_id: OptId, inst: inst::Instruction) {
-        match block_id {
-            OptId::None => (),
+        let cur_fn = self.functions.get_mut(self.current_function_idx.unwrap()).unwrap();
+        let blk_opt = cur_fn.blocks.get_mut(block_id.unwrap());
+        match blk_opt {
+            None => (),
 
-            OptId::Id(id) => {
-                let cur_fn = self.current_function();
-                
+            Some(blk) => {
+                blk.insts.push(inst);
+            }
+        }
+    }
+
+    fn set_term(&mut self, block_id: OptId, term: inst::Terminator) {
+        let cur_fn = self.functions.get_mut(self.current_function_idx.unwrap()).unwrap();
+        let blk_opt = cur_fn.blocks.get_mut(block_id.unwrap());
+        match blk_opt {
+            None => (),
+
+            Some(blk) => {
+                blk.term = Some(term);
             }
         }
     }
