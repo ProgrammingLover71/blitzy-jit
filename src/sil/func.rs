@@ -1,28 +1,30 @@
 use crate::sil::types;
 use crate::sil::block;
 
-use std::fmt::Error;
-use std::fmt::Write;
+use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Function<'a> {
     pub name: String,
     pub params: Vec<types::Type<'a>>,
     pub returns: types::Type<'a>,
-    pub blocks: Vec<block::Block<'a>>
+    pub blocks: Vec<block::Block<'a>>,
+
+    pub type_map: HashMap<u32, types::Type<'a>>
 }
 
 
-impl<'a> Function<'a> {
-    pub fn to_string(&self) -> Result<String, Error> {
-        let mut s = String::new();
+impl<'a> fmt::Display for Function<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "fn {}{:?} -> {:?}", self.name, self.params, self.returns)?;
+        writeln!(f, "types: {:?}", self.type_map)?;
 
-        writeln!(&mut s, "function {}\n- params: {:?}\n- return: {:?}\n{{", self.name, self.params, self.returns)?;
         for blk in &self.blocks {
-            writeln!(&mut s, "{}", blk.to_string()?)?;
+            writeln!(f, "{}", blk)?;
         }
-        writeln!(&mut s, "}}")?;
+        writeln!(f, "endf")?;
 
-        Ok(s)
+        Ok(())
     }
 }
